@@ -1,0 +1,60 @@
+name: Windows build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build and test
+        id: verify
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME }
+          $package = .\scripts\verify-release.ps1 -Tag $tag
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "package=$package"
+      - name: Upload the verified ZIP
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: lightweight-win-x64
+          path: ${{ steps.verify.outputs.package }}
+          if-no-files-found: error
+          overwrite: true
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: verify
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: lightweight-win-x64
+          path: release-asset
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $package = Get-Item -LiteralPath "release-asset/CodexProxyLauncher-${version}-win-x64.zip"
+          gh release create $env:GITHUB_REF_NAME $package.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --generate-notes
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Release creation failed with exit code $LASTEXITCODE."
+          }

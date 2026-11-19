@@ -1,5 +1,11 @@
 # 测试目录
 
+## 完整发布验证
+
+在 Windows 上用 PowerShell 7 从项目根目录运行 `.\scripts\verify-release.ps1`。加上 `-Tag v0.1.0` 可以同时校验发布标签。脚本编译 .NET 10 目标，再打包并验证 .NET Framework 4.8 轻量 ZIP。
+
+`release-package.ps1` 检查 ZIP 的文件名、标签版本和归档内容。兼容性和冒烟测试使用本次从 ZIP 解压出的 EXE。测试结束后，脚本输出通过验证的 ZIP 路径。[构建脚本说明](../scripts/README.md#cicd)
+
 ## 轻量包
 
 在项目根目录用 PowerShell 7 创建轻量包，将 `artifacts/release/` 下的 ZIP 解压到空的 `artifacts/verify-win-x64/`，然后指定解压出的 EXE。

@@ -17,7 +17,23 @@
 
 `Package` 和 `Publish` 均接受 `-OutputDirectory`。轻量 ZIP 默认输出到 `artifacts/release/`，文件名和 EXE 的版本由 [项目文件](../src/CodexProxyLauncher/CodexProxyLauncher.csproj) 中的 `Version` 提供。
 
-发布前将 ZIP 解压到单独目录，按 [测试说明](../tests/README.md) 验证，再将 ZIP 附在同版本源码标签对应的 GitHub Release。
+## CI/CD
+
+本地和 GitHub Actions 使用同一个验证脚本。每次运行都会在 `artifacts/ci/` 的独立子目录生成轻量 ZIP，检查归档内容，再解压运行兼容性测试、界面与回环代理冒烟测试和文档链接检查。
+
+```powershell
+.\scripts\verify-release.ps1
+.\scripts\verify-release.ps1 -Tag v0.1.0
+```
+
+指定标签时，脚本还会核对标签与 ZIP 的版本。所有检查通过后，最后一行输出已验证的 ZIP 路径。各项测试见 [测试说明](../tests/README.md)。
+
+[GitHub Actions 工作流](../.github/workflows/release.yml) 在推送 `main`、向 `main` 提交 PR 或推送以 `v` 开头的标签时执行验证。标签对应的验证通过后，发布任务会把同一份 ZIP 附到 GitHub Release。标签取自项目的 `Version`，例如 `0.1.0` 对应 `v0.1.0`。
+
+```powershell
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin refs/tags/v0.1.0
+```
 
 ## 清理
 
