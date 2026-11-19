@@ -1,0 +1,45 @@
+# Build and IDE output
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+coverage/
+artifacts/
+dist/
+.tools/
+/.dotnet-home/
+/研究备份/
+
+# Personal configuration, logs, signing credentials
+.env
+.env.*
+!.env.example
+*.local.json
+*.log
+*.pfx
+*.p12
+*.key
+*.pem
+*.cer
+*.crt
+*.snk
+
+# Existing samples and local reverse-engineering material
+/analysis/
+/inspect-static.ps1
+*.exe
+*.dll
+*.msi
+*.msix
+*.msixbundle
+*.zip
+
+# OS and local assistant configuration
+Thumbs.db
+.DS_Store
+/.codex/
+/.agents/
+/.aws/
