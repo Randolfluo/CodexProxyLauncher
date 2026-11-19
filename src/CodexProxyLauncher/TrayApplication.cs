@@ -176,7 +176,6 @@ internal sealed class TrayApplication : ApplicationContext
             proxy = next;
             CancelProxyCheck();
             window.SetProxyStatus(new("待检测", "待检测"));
-            menu.SetProxyAddress(proxy);
         }
         saveTimer.Stop();
         if (draftSettings is null)
@@ -235,9 +234,7 @@ internal sealed class TrayApplication : ApplicationContext
     {
         bool canLaunch = proxy is not null && !launching;
         window.SetActions(canLaunch, launching, proxy is not null && proxyCheck is null, proxyCheck is not null);
-        menu.LaunchItem.Enabled = canLaunch;
-        menu.LaunchItem.Text = launching ? "正在启动 Codex…" : "使用代理启动 Codex";
-        menu.ExitItem.Enabled = !launching;
+        menu.SetState(proxy, launching);
     }
 
     private void CancelProxyCheck()

@@ -35,12 +35,10 @@ Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 [Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
 $storeType = $app.GetType('CodexProxyLauncher.LauncherSettingsStore', $true)
 $windowType = $app.GetType('CodexProxyLauncher.SettingsWindow', $true)
-$menuType = $app.GetType('CodexProxyLauncher.TrayQuickMenu', $true)
 $themeType = $app.GetType('CodexProxyLauncher.LauncherTheme', $true)
 $settingsPath = Join-Path ([IO.Path]::GetTempPath()) ('launcher-test-' + [Guid]::NewGuid().ToString('N') + '.json')
 $icon = $null
 $window = $null
-$menu = $null
 
 try {
     $constructorFlags = [Reflection.BindingFlags]'Instance,Public,NonPublic'
@@ -64,15 +62,12 @@ try {
     $window = $windowType.GetConstructor([type[]]@($settings.GetType(), [Drawing.Icon])).Invoke(
         [object[]]@($settings.PSObject.BaseObject, $icon.PSObject.BaseObject))
     $null = $window.Handle
-    $menu = [Activator]::CreateInstance($menuType)
     $dark = $themeType.GetProperty('Dark').GetValue($null)
     $themeMethodFlags = [Reflection.BindingFlags]'Instance,NonPublic'
     $themeArguments = [object[]]@($dark.PSObject.BaseObject)
     $null = $windowType.GetMethod('ApplyTheme', $themeMethodFlags).Invoke($window, $themeArguments)
-    $null = $menuType.GetMethod('ApplyTheme', $themeMethodFlags).Invoke($menu, $themeArguments)
-    $menu.SetProxyAddress($settings.CreateProxy())
-    if (-not $window.ReadSettings().Equals($settings) -or $menu.Items.Count -ne 6) {
-        throw 'The hidden settings window or tray menu returned unexpected state.'
+    if (-not $window.ReadSettings().Equals($settings)) {
+        throw 'The hidden settings window returned unexpected state.'
     }
 
     [IO.File]::WriteAllText($settingsPath, '{"Host":"127.0.0.1","Port":7897,"RestartRunning":false}')
@@ -84,13 +79,14 @@ try {
     if (-not $warning -or $defaults.Port -ne 7897) {
         throw 'Invalid settings should fall back to defaults and report a warning.'
     }
-    Write-Output 'PASS: embedded configuration, existing settings, settings round-trip and fallback, settings window and tray menu.'
+    Write-Output 'PASS: embedded configuration, existing settings, settings round-trip and fallback, and settings window.'
 } finally {
-    if ($menu) { $menu.Dispose() }
     if ($window) { $window.Dispose() }
     if ($icon) { $icon.Dispose() }
     [IO.File]::Delete($settingsPath)
 }
+
+& (Join-Path $PSScriptRoot 'tray-menu.ps1') -AssemblyPath $Executable
 
 if (-not $CheckProxy) { return }
 
