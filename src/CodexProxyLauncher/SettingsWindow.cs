@@ -18,7 +18,6 @@ internal sealed class SettingsWindow : Form
     private const int WsCaption = 0x00C00000;
     private const int WsThickFrame = 0x00040000;
     private const int WsExWindowEdge = 0x00000100;
-    private const int WsExComposited = 0x02000000;
     private const int WmSize = 0x0005;
     private const int WmWindowPosChanged = 0x0047;
     private const int WmNcCalcSize = 0x0083;
@@ -84,6 +83,8 @@ internal sealed class SettingsWindow : Form
 
     public SettingsWindow(LauncherSettings settings, Icon icon)
     {
+        // Buffer managed painting without putting child HWNDs on one native restore surface.
+        DoubleBuffered = true;
         SuspendLayout();
         Text = Program.WindowTitle;
         Icon = icon;
@@ -107,7 +108,7 @@ internal sealed class SettingsWindow : Form
         AddRow(frame, header);
 
         var contents = Stack(new Padding(ContentInset, 2, ContentInset, 0));
-        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Margin = new Padding(0), TabIndex = 1 };
+        var viewport = new BufferedPanel { Dock = DockStyle.Fill, AutoScroll = true, Margin = new Padding(0), TabIndex = 1 };
         viewport.Controls.Add(contents);
         var (proxySection, arrangeFields) = BuildProxySection();
         AddRow(contents, proxySection);
@@ -368,8 +369,6 @@ internal sealed class SettingsWindow : Form
         {
             CreateParams parameters = base.CreateParams;
             parameters.Style &= ~WsCaption;
-            // Buffer the form and its child windows as one frame.
-            parameters.ExStyle |= WsExComposited;
             if (calculatingRestoreBounds)
             {
                 // WinForms may convert its saved client size using the native frame styles.
@@ -808,7 +807,7 @@ internal sealed class SettingsWindow : Form
 
     private Panel BuildInput(TextBox input)
     {
-        var field = new Panel
+        var field = new BufferedPanel
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(0),
@@ -1114,7 +1113,7 @@ internal sealed class SettingsWindow : Form
 
     private static TableLayoutPanel Stack(Padding padding = default)
     {
-        var table = new TableLayoutPanel
+        var table = new BufferedTableLayoutPanel
         {
             Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1, Margin = new Padding(0), Padding = padding,
@@ -1125,7 +1124,7 @@ internal sealed class SettingsWindow : Form
 
     private static TableLayoutPanel Row(Padding padding = default)
     {
-        var table = new TableLayoutPanel
+        var table = new BufferedTableLayoutPanel
         {
             Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             RowCount = 1, Margin = new Padding(0), Padding = padding,
@@ -1230,6 +1229,20 @@ internal sealed class SettingsWindow : Form
 
     [DllImport("user32.dll", EntryPoint = "SendMessageW", ExactSpelling = true)]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
+
+    private sealed class BufferedPanel : Panel
+    {
+        public BufferedPanel()
+        {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+        }
+    }
+
+    private sealed class BufferedTableLayoutPanel : TableLayoutPanel
+    {
+        public BufferedTableLayoutPanel() => DoubleBuffered = true;
+    }
 
     private sealed class ToggleSwitch : CheckBox
     {

@@ -7,7 +7,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
-[Windows.Forms.Application]::EnableVisualStyles()
 
 Add-Type @'
 using System;
@@ -25,6 +24,15 @@ public static class SettingsWindowNative
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr window, int command);
 
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindowAsync(IntPtr window, int command);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmFlush();
+
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
     public static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
 
@@ -33,13 +41,15 @@ public static class SettingsWindowNative
 
     public static int ReadWindowPixel(IntPtr window, int x, int y)
     {
-        IntPtr dc = GetWindowDC(window);
+        IntPtr dc = window == IntPtr.Zero ? GetDC(IntPtr.Zero) : GetWindowDC(window);
         if (dc == IntPtr.Zero)
             return -1;
         try { return GetPixel(dc, x, y); }
         finally { ReleaseDC(window, dc); }
     }
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")]
     private static extern IntPtr GetWindowDC(IntPtr window);
     [DllImport("user32.dll")]
@@ -48,6 +58,19 @@ public static class SettingsWindowNative
     private static extern int GetPixel(IntPtr dc, int x, int y);
 }
 '@
+
+function Wait-ScreenPixel([Drawing.Point]$Point, [int]$Color) {
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        [Windows.Forms.Application]::DoEvents()
+        $null = [SettingsWindowNative]::DwmFlush()
+        if ([SettingsWindowNative]::ReadWindowPixel([IntPtr]::Zero, $Point.X, $Point.Y) -eq $Color) {
+            return $true
+        }
+        [Threading.Thread]::Sleep(10)
+    } while ($watch.ElapsedMilliseconds -lt 1000)
+    return $false
+}
 
 $app = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $AssemblyPath).Path)
 $windowType = $app.GetType('CodexProxyLauncher.SettingsWindow', $true)
@@ -58,7 +81,11 @@ $openFromTray = $windowType.GetMethod('OpenFromTray', [Reflection.BindingFlags]'
 $applyTheme = $windowType.GetMethod('ApplyTheme', [Reflection.BindingFlags]'Instance,NonPublic')
 $icon = [Drawing.Icon]::new($windowType, 'App.ico')
 $window = $null
+$backdrop = $null
+# Screen pixels are in physical coordinates even when the PowerShell host is DPI-unaware.
+$previousDpi = [SettingsWindowNative]::SetThreadDpiAwarenessContext([IntPtr](-4))
 try {
+    [Windows.Forms.Application]::EnableVisualStyles()
     $window = [Activator]::CreateInstance($windowType, [object[]]@($settings.PSObject.BaseObject, $icon))
     $light = $themeType.GetProperty('Light').GetValue($null)
     $null = $applyTheme.Invoke($window, [object[]]@($light.PSObject.BaseObject))
@@ -71,11 +98,6 @@ try {
     }
 
     $handle = $window.Handle
-    $style = [SettingsWindowNative]::GetWindowLong($handle, [SettingsWindowNative]::ExStyle)
-    if (($style -band [SettingsWindowNative]::ExComposited) -eq 0) {
-        throw 'Resizing must buffer the child windows together with the background.'
-    }
-
     $window.Width = [Math]::Min($area.Width, $window.LogicalToDeviceUnits(680))
     $hostInput = $window.Controls.Find('ProxyHost', $true)[0]
     $portInput = $window.Controls.Find('ProxyPort', $true)[0]
@@ -130,6 +152,52 @@ try {
         }
     }
 
+    # A paint callback alone does not prove the desktop compositor displayed that paint.
+    $backdrop = [Windows.Forms.Form]::new()
+    $backdrop.FormBorderStyle = 'None'
+    $backdrop.StartPosition = 'Manual'
+    $backdrop.Bounds = $normal
+    $backdrop.ShowInTaskbar = $false
+    $backdrop.BackColor = [Drawing.Color]::FromArgb(211, 24, 197)
+    $backdrop.TopMost = $true
+    $backdrop.Show()
+    $window.TopMost = $true
+    $window.BringToFront()
+    $sample = $window.PointToScreen([Drawing.Point]::new(
+        [int]($window.Padding.Left / 2), [int]($window.ClientSize.Height * 0.75)))
+    $minimize = $window.Controls.Find('MinimizeWindow', $true)[0]
+    $minimize.PerformClick()
+    $marker = [Drawing.ColorTranslator]::ToWin32($backdrop.BackColor)
+    $desktopAvailable = Wait-ScreenPixel $sample $marker
+    if (-not [SettingsWindowNative]::ShowWindowAsync($handle, [SettingsWindowNative]::Restore)) {
+        throw 'Could not request a native asynchronous restore.'
+    }
+    if ($desktopAvailable) {
+        if (-not (Wait-ScreenPixel $sample $background)) {
+            throw 'The restored window did not cover the backdrop with its client background.'
+        }
+    } else {
+        [Windows.Forms.Application]::DoEvents()
+        Write-Output 'SKIP: the desktop did not display the test backdrop.'
+    }
+    if ($window.WindowState -ne 'Normal' -or $window.Bounds -ne $normal) {
+        throw 'Asynchronous restore must return the window to its previous size and position.'
+    }
+    $backdrop.Dispose()
+    $backdrop = $null
+    $window.TopMost = $false
+
+    $style = [SettingsWindowNative]::GetWindowLong($handle, [SettingsWindowNative]::ExStyle)
+    if (($style -band [SettingsWindowNative]::ExComposited) -ne 0) {
+        throw 'The window must not share a native paint buffer with its child windows.'
+    }
+    $getStyle = [Windows.Forms.Control].GetMethod('GetStyle', [Reflection.BindingFlags]'Instance,NonPublic')
+    foreach ($control in $window, $titleBar, $hostInput.Parent) {
+        if (-not $getStyle.Invoke($control, [object[]]@([Windows.Forms.ControlStyles]::OptimizedDoubleBuffer))) {
+            throw 'Resizing must keep per-control double buffering.'
+        }
+    }
+
     $window.WindowState = 'Maximized'
     $maximizedClient = $window.RectangleToScreen($window.ClientRectangle)
     if (-not $area.Contains($maximizedClient)) {
@@ -145,8 +213,12 @@ try {
         throw 'Opening a hidden window from the tray must reuse its existing controls and bounds.'
     }
 
-    Write-Output 'PASS: first show, responsive layout, native resize edge, activation frame, taskbar and tray restore.'
+    Write-Output 'PASS: first show, buffered resize, activation frame, and taskbar and tray restore.'
 } finally {
     if ($window) { $window.Dispose() }
+    if ($backdrop) { $backdrop.Dispose() }
     $icon.Dispose()
+    if ($previousDpi -ne [IntPtr]::Zero) {
+        $null = [SettingsWindowNative]::SetThreadDpiAwarenessContext($previousDpi)
+    }
 }
