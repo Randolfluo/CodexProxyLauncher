@@ -10,23 +10,25 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $lightweightName = 'CodexProxyLauncher-{0}-win-x64-net48.exe' -f $Version
 $fullName = 'CodexProxyLauncher-{0}-win-x64-net10.exe' -f $Version
-$expectedNames = @($lightweightName, $fullName, 'SHA256SUMS.txt')
+$executableNames = @($lightweightName, $fullName)
+$expectedNames = $executableNames + @($executableNames | ForEach-Object { "$_.sha256" })
 $entries = @(Get-ChildItem -LiteralPath $Directory -Force)
 if ($entries.Count -ne $expectedNames.Count -or
     ($entries | Where-Object { $_.PSIsContainer }) -or
     (Compare-Object -ReferenceObject $expectedNames -DifferenceObject $entries.Name -CaseSensitive)) {
-    throw 'The release must contain exactly the two EXEs and SHA256SUMS.txt.'
+    throw 'The release must contain exactly two EXEs and their two matching .sha256 files.'
 }
 
 $lightweightPath = Join-Path $Directory $lightweightName
 $fullPath = Join-Path $Directory $fullName
-$expectedChecksums = foreach ($executable in $lightweightPath, $fullPath) {
+foreach ($executable in $lightweightPath, $fullPath) {
+    $filename = Split-Path -Leaf $executable
     $hash = (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant()
-    '{0}  {1}' -f $hash, (Split-Path -Leaf $executable)
-}
-$checksums = Get-Content -LiteralPath (Join-Path $Directory 'SHA256SUMS.txt')
-if (($checksums -join [Environment]::NewLine) -cne ($expectedChecksums -join [Environment]::NewLine)) {
-    throw 'The SHA-256 manifest does not match the two release executables.'
+    $expectedChecksum = '{0}  {1}' -f $hash, $filename
+    $checksum = @(Get-Content -LiteralPath "$executable.sha256")
+    if ($checksum.Count -ne 1 -or $checksum[0] -cne $expectedChecksum) {
+        throw "The checksum file '$filename.sha256' does not match '$filename'."
+    }
 }
 
 $licenseFiles = [ordered]@{
@@ -63,4 +65,4 @@ foreach ($name in $runtimeNotices) {
     }
 }
 
-Write-Output 'PASS: two release EXEs, SHA-256 checksums, and embedded license notices.'
+Write-Output 'PASS: two release EXEs, individual SHA-256 files, and embedded license notices.'

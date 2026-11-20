@@ -53,11 +53,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = $env:GITHUB_REF_NAME.Substring(1)
-          $paths = @(
+          $executables = @(
             "release-asset/CodexProxyLauncher-${version}-win-x64-net48.exe"
             "release-asset/CodexProxyLauncher-${version}-win-x64-net10.exe"
-            'release-asset/SHA256SUMS.txt'
           )
+          $paths = $executables + @($executables | ForEach-Object { "$_.sha256" })
           $assets = (Get-Item -LiteralPath $paths).FullName
           gh release create $env:GITHUB_REF_NAME @assets --repo $env:GITHUB_REPOSITORY --verify-tag --generate-notes
           if ($LASTEXITCODE -ne 0) {

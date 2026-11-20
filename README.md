@@ -11,7 +11,7 @@ Windows 桌面代理启动器，可为 Codex Desktop 指定 HTTP 代理，并按
 | `CodexProxyLauncher-<version>-win-x64-net48.exe`（轻量版） | 系统 .NET Framework 4.8 或 4.8.1 |
 | `CodexProxyLauncher-<version>-win-x64-net10.exe`（完整版） | 内置 .NET 10 运行时 |
 
-将所选 EXE 放到固定目录。可用 `Get-FileHash -Algorithm SHA256` 查看文件哈希，再与同一 Release 中的 `SHA256SUMS.txt` 对照。双击 EXE 即可打开设置。当前 EXE 未签名。
+将所选 EXE 放到固定目录。可用 `Get-FileHash -Algorithm SHA256` 查看文件哈希，再与同一 Release 中对应的 `.exe.sha256` 文件对照。双击 EXE 即可打开设置。当前 EXE 未签名。
 
 ## 使用
 

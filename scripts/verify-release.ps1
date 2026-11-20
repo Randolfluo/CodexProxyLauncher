@@ -29,11 +29,11 @@ $lightweight = Join-Path $assetsDirectory ('CodexProxyLauncher-{0}-win-x64-net48
 $full = Join-Path $assetsDirectory ('CodexProxyLauncher-{0}-win-x64-net10.exe' -f $version)
 Copy-Item -LiteralPath (Join-Path $extractedDirectory 'CodexProxyLauncher.exe') -Destination $lightweight
 Copy-Item -LiteralPath (Join-Path $fullDirectory 'CodexProxyLauncher.exe') -Destination $full
-$checksums = foreach ($executable in $lightweight, $full) {
+foreach ($executable in $lightweight, $full) {
     $hash = (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant()
-    '{0}  {1}' -f $hash, (Split-Path -Leaf $executable)
+    $checksum = '{0}  {1}' -f $hash, (Split-Path -Leaf $executable)
+    Set-Content -LiteralPath "$executable.sha256" -Value $checksum -Encoding ascii
 }
-Set-Content -LiteralPath (Join-Path $assetsDirectory 'SHA256SUMS.txt') -Value $checksums -Encoding ascii
 
 $fullAssembly = Join-Path $projectRoot 'src\CodexProxyLauncher\bin\Release\net10.0-windows\win-x64\CodexProxyLauncher.dll'
 & (Join-Path $testDirectory 'release-assets.ps1') -Directory $assetsDirectory -Version $version -FullAssemblyPath $fullAssembly | Out-Host

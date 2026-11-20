@@ -4,7 +4,7 @@
 
 在 Windows 上用 PowerShell 7 从项目根目录运行 `.\scripts\verify-release.ps1`。加上 `-Tag v0.1.0` 可以同时校验发布标签。脚本构建 .NET Framework 4.8 轻量版和 .NET 10 自包含版。
 
-`release-package.ps1` 检查轻量版的中间 ZIP。`release-assets.ps1` 验证最终发布目录的文件清单、SHA-256 和内嵌许可内容。兼容性测试使用两个最终 EXE，界面和代理冒烟测试使用轻量版。所有测试通过后，脚本输出发布文件目录。[构建脚本说明](../scripts/README.md#cicd)
+`release-package.ps1` 检查轻量版的中间 ZIP。`release-assets.ps1` 验证发布目录中的两个 EXE、各自的 SHA-256 校验文件和内嵌许可内容。兼容性测试使用两个最终 EXE，界面和代理冒烟测试使用轻量版。所有测试通过后，脚本输出发布文件目录。[构建脚本说明](../scripts/README.md#cicd)
 
 ## 轻量包
 
