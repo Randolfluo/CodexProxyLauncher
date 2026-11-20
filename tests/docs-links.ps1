@@ -12,18 +12,20 @@ $documentRoots = @(
 )
 
 $linkCount = 0
+$referencePattern = '<(?:a\b[^>]*?\shref|(?<image>img)\b[^>]*?\ssrc)="(?<url>[^"]+)"'
 $documents = Get-ChildItem -LiteralPath $documentRoots -File -Filter '*.md'
 foreach ($document in $documents) {
     $html = (ConvertFrom-Markdown -LiteralPath $document.FullName).Html
-    foreach ($match in [regex]::Matches($html, '<a\b[^>]*\bhref="([^"]+)"')) {
-        $href = [Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
-        if ($href -match '^(#|//|[a-zA-Z][a-zA-Z0-9+.-]*:)') { continue }
+    foreach ($match in [regex]::Matches($html, $referencePattern)) {
+        $url = [Net.WebUtility]::HtmlDecode($match.Groups['url'].Value)
+        if ($url -match '^(#|//|[a-zA-Z][a-zA-Z0-9+.-]*:)') { continue }
 
-        $target = [Uri]::UnescapeDataString(($href -split '[?#]', 2)[0])
-        if (-not (Test-Path -LiteralPath (Join-Path $document.DirectoryName $target))) {
-            throw "Broken link '$href' in $($document.FullName)."
+        $target = [Uri]::UnescapeDataString(($url -split '[?#]', 2)[0])
+        $pathType = if ($match.Groups['image'].Success) { 'Leaf' } else { 'Any' }
+        if (-not (Test-Path -LiteralPath (Join-Path $document.DirectoryName $target) -PathType $pathType)) {
+            throw "Broken link '$url' in $($document.FullName)."
         }
         $linkCount++
     }
 }
-Write-Output "PASS: $linkCount local Markdown links."
+Write-Output "PASS: $linkCount local Markdown links and images."

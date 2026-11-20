@@ -31,7 +31,7 @@ powershell.exe -NoProfile -STA -File .\tests\lightweight-smoke.ps1 -Executable $
 
 ## 文档链接
 
-在项目根目录用 PowerShell 7 检查本地 Markdown 链接。
+在项目根目录用 PowerShell 7 检查本地 Markdown 链接和图片。
 
 ```powershell
 .\tests\docs-links.ps1
