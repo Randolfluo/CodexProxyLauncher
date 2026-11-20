@@ -52,6 +52,8 @@ internal sealed class LauncherTheme
     public Color DisabledInk => Choose(0x53635a, 0xaab8ad, SystemColors.GrayText);
     public Color Warning => Choose(0x7e521b, 0xf1ce88, SystemColors.WindowText);
     public Color Error => Choose(0xa63030, 0xffb3aa, SystemColors.WindowText);
+    public Color DestructiveHover => Choose(0x8b2727, 0xffc9c3, SystemColors.Highlight);
+    public Color OnDestructive => Choose(0xffffff, 0x381817, SystemColors.HighlightText);
 
     public static LauncherTheme ForPreference(AppearanceMode mode) =>
         Resolve(mode, mode == AppearanceMode.System && WindowsUsesDarkAppearance(), SystemInformation.HighContrast);

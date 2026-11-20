@@ -104,17 +104,33 @@ try {
     $window.Width = [Math]::Min($area.Width, $window.LogicalToDeviceUnits(680))
     $hostInput = $window.Controls.Find('ProxyHost', $true)[0]
     $portInput = $window.Controls.Find('ProxyPort', $true)[0]
+    $cleanupButton = $window.Controls.Find('CleanupCodex', $true)[0]
+    $cleanupStatus = $window.Controls.Find('CleanupStatus', $true)[0]
+    $cleanupRow = $cleanupButton.Parent
     $normal = $window.Bounds
     $hostY = $hostInput.PointToScreen([Drawing.Point]::Empty).Y
     $portY = $portInput.PointToScreen([Drawing.Point]::Empty).Y
+    $cleanupCell = $cleanupRow.GetCellPosition($cleanupButton)
+    if ($window.ClientSize.Width -gt $window.LogicalToDeviceUnits(520) -and
+        ($cleanupCell.Row -ne 0 -or $cleanupCell.Column -ne 1)) {
+        throw 'The cleanup action must sit to the right of its description at a normal width.'
+    }
     $window.Width = [Math]::Max($window.MinimumSize.Width, $window.LogicalToDeviceUnits(350))
     if ($portInput.PointToScreen([Drawing.Point]::Empty).Y -le $hostInput.PointToScreen([Drawing.Point]::Empty).Y) {
         throw 'The proxy fields must stack at a narrow width.'
+    }
+    if ($cleanupRow.GetRow($cleanupButton) -ne 1 -or
+        $cleanupButton.PointToScreen([Drawing.Point]::Empty).Y -lt $cleanupStatus.PointToScreen([Drawing.Point]::Empty).Y + $cleanupStatus.Height -or
+        -not $cleanupStatus.Parent.ClientRectangle.Contains($cleanupStatus.Bounds)) {
+        throw 'The cleanup action must fit below its description at a narrow width.'
     }
     $window.Bounds = $normal
     if ($hostInput.PointToScreen([Drawing.Point]::Empty).Y -ne $hostY -or
         $portInput.PointToScreen([Drawing.Point]::Empty).Y -ne $portY) {
         throw 'The proxy fields did not return to their original layout after expanding the window.'
+    }
+    if ($cleanupRow.GetCellPosition($cleanupButton) -ne $cleanupCell) {
+        throw 'The cleanup action did not return to its original layout after expanding the window.'
     }
     [Windows.Forms.Application]::DoEvents()
 

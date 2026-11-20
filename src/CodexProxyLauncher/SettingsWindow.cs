@@ -7,13 +7,15 @@ namespace CodexProxyLauncher;
 
 internal sealed class SettingsWindow : Form
 {
-    private static readonly Size DefaultClientSize = new(680, 680);
+    private static readonly Size DefaultClientSize = new(680, 720);
     private static readonly Size MinimumClientSize = new(320, 256);
     private const int CompactWindowWidth = 520;
     private const int StackedFieldsWidth = 400;
     private const int ContentInset = 22;
     private const int CompactContentInset = 16;
     private const int ResizeInset = 6;
+    private const int ActionGap = 12;
+    private const int CleanupButtonWidth = 116;
     private const float AddressFontSizeInPoints = 10;
     private const int WsCaption = 0x00C00000;
     private const int WsThickFrame = 0x00040000;
@@ -34,6 +36,8 @@ internal sealed class SettingsWindow : Form
     private const uint RdwErase = 0x0004;
     private const uint RdwAllChildren = 0x0080;
     private const uint RdwUpdateNow = 0x0100;
+    private const string CleanupText = "清理旧进程…";
+    private const string CleanupDescription = "结束当前会话中的 Codex 进程，之后可手动打开。";
     private const string RestartHelpTitle = "为什么要清理旧进程？";
     private const string RestartHelpText =
         "启动器会在启动 Codex 时传入当前代理设置。\r\n" +
@@ -68,6 +72,10 @@ internal sealed class SettingsWindow : Form
     private readonly TextBox port = new() { Name = "ProxyPort", AccessibleName = "代理端口" };
     private readonly Button testButton = new() { Name = "TestProxy", Text = "检测代理" };
     private readonly LaunchActionButton launchButton = new() { Name = "LaunchCodex" };
+    private readonly Button cleanupButton = new()
+    {
+        Name = "CleanupCodex", Text = CleanupText, AccessibleDescription = CleanupDescription, CausesValidation = false,
+    };
     private readonly ToggleSwitch restart = new() { Name = "RestartRunning", AccessibleName = "启动前清理旧进程" };
     private readonly ToggleSwitch startSilently = new() { Name = "StartSilently", AccessibleName = "静默启动" };
     private readonly ToggleSwitch closeToTray = new() { Name = "CloseToTray", AccessibleName = "关闭时最小化到托盘" };
@@ -79,6 +87,7 @@ internal sealed class SettingsWindow : Form
     private readonly Label tcpStatus = TextLabel("");
     private readonly Label httpStatus = TextLabel("");
     private readonly Label launchStatus = TextLabel("");
+    private readonly Label cleanupStatus;
     private readonly Label settingsWarning = TextLabel("");
     private readonly Label startupWarning = TextLabel("");
     private readonly Label saveStatus = TextLabel("更改将自动保存");
@@ -86,7 +95,12 @@ internal sealed class SettingsWindow : Form
     {
         AutoSize = true, Text = "查看失败详情", Visible = false, Margin = new Padding(0, 2, 0, 0),
     };
+    private readonly LinkLabel cleanupDetails = new()
+    {
+        Name = "CleanupDetails", AutoSize = true, Text = "查看失败详情", Visible = false, Margin = new Padding(0, 2, 0, 0),
+    };
     private string? launchError;
+    private string? cleanupError;
     private bool invalidHost;
     private bool invalidPort;
     private bool updatingStartup;
@@ -95,6 +109,7 @@ internal sealed class SettingsWindow : Form
     public event EventHandler? SettingsEdited;
     public event EventHandler? StartupChanged;
     public event EventHandler? LaunchRequested;
+    public event EventHandler? CleanupRequested;
     public event EventHandler? TestRequested;
 
     public SettingsWindow(LauncherSettings settings, Icon icon)
@@ -122,6 +137,8 @@ internal sealed class SettingsWindow : Form
         launchTime.Margin = new Padding(0);
         launchTime.Visible = false;
         launchStatus.Name = "LaunchStatus";
+        cleanupStatus = TextLabel("", captionFont);
+        cleanupStatus.Name = "CleanupStatus";
 
         var frame = Stack();
         frame.AutoSize = false;
@@ -138,7 +155,8 @@ internal sealed class SettingsWindow : Form
         var (launchSection, arrangeLaunch) = BuildLaunchSection();
         AddRow(contents, launchSection);
         AddRow(contents, Divider(new Padding(0, 12, 0, 12)));
-        AddRow(contents, BuildBehaviorSection());
+        var (behaviorSection, arrangeCleanup) = BuildBehaviorSection();
+        AddRow(contents, behaviorSection);
         settingsWarning.Margin = new Padding(0, 0, 0, 10);
         AddRow(contents, settingsWarning);
         frame.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -165,6 +183,7 @@ internal sealed class SettingsWindow : Form
             {
                 compact = nextCompact;
                 arrangeLaunch(compact);
+                arrangeCleanup(compact);
             }
             if (nextStackedFields != stackedFields)
             {
@@ -180,6 +199,8 @@ internal sealed class SettingsWindow : Form
             int warningWidth = ClientSize.Width - Padding.Horizontal - contents.Padding.Horizontal -
                 SystemInformation.VerticalScrollBarWidth;
             startupWarning.MaximumSize = new Size(Math.Max(1, warningWidth), 0);
+            int cleanupWidth = warningWidth - (compact ? 0 : LogicalToDeviceUnits(CleanupButtonWidth + ActionGap));
+            cleanupStatus.MaximumSize = new Size(Math.Max(1, cleanupWidth), 0);
         }
 
         ClientSizeChanged += (_, _) => Reflow();
@@ -211,6 +232,7 @@ internal sealed class SettingsWindow : Form
         appearanceChoices.First(choice => choice.Mode == Appearance).Button.Checked = true;
         SetProxyStatus(new("待检测", "待检测"));
         SetLaunchStatus("尚未启动");
+        SetCleanupStatus();
         SetSaveStatus("更改将自动保存");
         SetSettingsWarning(null);
         ApplyTheme(LauncherTheme.ForPreference(Appearance));
@@ -243,10 +265,16 @@ internal sealed class SettingsWindow : Form
         };
         testButton.Click += (_, _) => TestRequested?.Invoke(this, EventArgs.Empty);
         launchButton.Click += (_, _) => LaunchRequested?.Invoke(this, EventArgs.Empty);
+        cleanupButton.Click += (_, _) => CleanupRequested?.Invoke(this, EventArgs.Empty);
         launchDetails.LinkClicked += (_, _) =>
         {
             if (launchError is not null)
                 ShowWarning(launchError);
+        };
+        cleanupDetails.LinkClicked += (_, _) =>
+        {
+            if (cleanupError is not null)
+                ShowWarning(cleanupError);
         };
         ResumeLayout(performLayout: true);
         Reflow();
@@ -300,10 +328,13 @@ internal sealed class SettingsWindow : Form
         LaunchCodexOnStartup = launchOnStartup.Checked,
     };
 
-    public void SetActions(bool launchEnabled, bool launchBusy, bool testEnabled, bool testBusy)
+    public void SetActions(bool launchEnabled, bool launchBusy, bool cleanupEnabled, bool cleanupBusy,
+        bool testEnabled, bool testBusy)
     {
         launchButton.SetBusy(launchBusy);
         launchButton.Enabled = launchEnabled;
+        cleanupButton.Enabled = cleanupEnabled;
+        cleanupButton.Text = cleanupBusy ? "正在清理…" : CleanupText;
         testButton.Enabled = testEnabled;
         testButton.Text = testBusy ? "检测中…" : "检测代理";
         ApplyActionColors();
@@ -328,6 +359,13 @@ internal sealed class SettingsWindow : Form
         launchDetails.Visible = !string.IsNullOrWhiteSpace(error);
     }
 
+    public void SetCleanupStatus(string? status = null, string? error = null, StatusKind kind = StatusKind.Neutral)
+    {
+        SetStatus(cleanupStatus, status ?? CleanupDescription, kind);
+        cleanupError = error;
+        cleanupDetails.Visible = !string.IsNullOrWhiteSpace(error);
+    }
+
     public void SetSettingsWarning(string? warning)
     {
         settingsWarning.Text = warning ?? "";
@@ -335,6 +373,46 @@ internal sealed class SettingsWindow : Form
     }
 
     public void SetSaveStatus(string text, StatusKind kind = StatusKind.Neutral) => SetStatus(saveStatus, text, kind);
+
+    internal bool ConfirmCleanup()
+    {
+        using var dialog = CreateDialog("清理 Codex 旧进程？", new Size(384, 126));
+        dialog.Name = "ConfirmCleanup";
+        var copy = TextLabel("这会关闭当前 Windows 会话中的 Codex。\r\n正在进行的任务可能中断。");
+        copy.MaximumSize = new Size(352, 0);
+        copy.Margin = new Padding(0, 0, 0, 14);
+
+        var cancel = new Button { Name = "CancelCleanup", Text = "取消", DialogResult = DialogResult.Cancel };
+        var confirm = new Button { Name = "ConfirmCleanupAction", Text = "确认清理", DialogResult = DialogResult.OK };
+        ConfigureButton(cancel);
+        ConfigureButton(confirm);
+        cancel.Size = confirm.Size = new Size(88, 33);
+        cancel.Margin = new Padding(0, 0, 8, 0);
+        var actions = InlineRow(cancel, confirm);
+        actions.Dock = DockStyle.None;
+        actions.Anchor = AnchorStyles.Right;
+
+        var body = Stack(new Padding(16));
+        body.Dock = DockStyle.Fill;
+        AddRow(body, copy);
+        AddRow(body, actions);
+        dialog.Controls.Add(body);
+        dialog.AcceptButton = dialog.CancelButton = cancel;
+        dialog.ActiveControl = cancel;
+
+        return ShowThemedDialog(dialog, palette =>
+        {
+            dialog.BackColor = palette.Surface;
+            ApplyButtonColors(cancel, palette, primary: false);
+            ApplyButtonColors(confirm, palette, primary: true);
+            if (!palette.IsHighContrast)
+            {
+                confirm.BackColor = confirm.FlatAppearance.BorderColor = palette.Error;
+                confirm.ForeColor = palette.OnDestructive;
+                confirm.FlatAppearance.MouseOverBackColor = confirm.FlatAppearance.MouseDownBackColor = palette.DestructiveHover;
+            }
+        }) == DialogResult.OK;
+    }
 
     internal void ShowWarning(string message)
     {
@@ -344,14 +422,7 @@ internal sealed class SettingsWindow : Form
             return;
         }
 
-        using var dialog = new Form
-        {
-            Text = Text, Icon = Icon, Font = bodyFont,
-            ClientSize = new Size(460, 230), AutoScaleDimensions = new SizeF(96, 96),
-            AutoScaleMode = AutoScaleMode.Dpi, StartPosition = FormStartPosition.CenterParent,
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false,
-        };
+        using var dialog = CreateDialog(Text, new Size(460, 230));
         var details = new TextBox
         {
             AccessibleName = "警告详情", Text = message, ReadOnly = true, Multiline = true,
@@ -372,11 +443,35 @@ internal sealed class SettingsWindow : Form
         dialog.AcceptButton = dialog.CancelButton = close;
         dialog.ActiveControl = close;
 
-        void ApplyDialogTheme(LauncherTheme palette)
+        ShowThemedDialog(dialog, palette =>
         {
-            dialog.BackColor = details.BackColor = palette.Background;
+            details.BackColor = palette.Background;
             details.ForeColor = palette.Ink;
             ApplyButtonColors(close, palette, primary: true);
+        });
+    }
+
+    private Form CreateDialog(string title, Size size)
+    {
+        var dialog = new Form
+        {
+            Text = title, Icon = Icon, Font = bodyFont, ClientSize = size,
+            StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false,
+        };
+        dialog.SuspendLayout();
+        dialog.AutoScaleDimensions = new SizeF(96, 96);
+        dialog.AutoScaleMode = AutoScaleMode.Dpi;
+        return dialog;
+    }
+
+    private DialogResult ShowThemedDialog(Form dialog, Action<LauncherTheme> apply)
+    {
+        void ApplyDialogTheme(LauncherTheme palette)
+        {
+            dialog.BackColor = palette.Background;
+            dialog.ForeColor = palette.Ink;
+            apply(palette);
             palette.ApplyWindowFrame(dialog);
         }
 
@@ -385,7 +480,9 @@ internal sealed class SettingsWindow : Form
         themeBindings.Add(ApplyDialogTheme);
         try
         {
-            dialog.ShowDialog(this);
+            // Scale the window and its controls together after the dialog has been built.
+            dialog.ResumeLayout(performLayout: true);
+            return dialog.ShowDialog(this);
         }
         finally
         {
@@ -402,9 +499,12 @@ internal sealed class SettingsWindow : Form
         validation.ForeColor = palette.Error;
         settingsWarning.ForeColor = palette.Warning;
         startupWarning.ForeColor = palette.Warning;
-        launchDetails.LinkColor = palette.Accent;
-        launchDetails.ActiveLinkColor = palette.AccentHover;
-        launchDetails.VisitedLinkColor = palette.Accent;
+        foreach (LinkLabel details in new[] { launchDetails, cleanupDetails })
+        {
+            details.LinkColor = palette.Accent;
+            details.ActiveLinkColor = palette.AccentHover;
+            details.VisitedLinkColor = palette.Accent;
+        }
         foreach (Action<LauncherTheme> apply in themeBindings)
             apply(palette);
         foreach (var status in statusKinds)
@@ -969,7 +1069,7 @@ internal sealed class SettingsWindow : Form
         return row;
     }
 
-    private TableLayoutPanel BuildBehaviorSection()
+    private (TableLayoutPanel Panel, Action<bool> ArrangeCleanup) BuildBehaviorSection()
     {
         var section = Stack();
         section.Dock = DockStyle.Fill;
@@ -977,6 +1077,16 @@ internal sealed class SettingsWindow : Form
         importantHeading.Name = "ImportantOptionsHeading";
         AddRow(section, importantHeading);
         AddRow(section, BuildSwitchRow(restart, "可能中断正在进行的 Codex 任务。", BuildRestartHelpButton()));
+        AddRow(section, Divider(new Padding(0, 5, 0, 7)));
+        var cleanup = Stack();
+        cleanup.Dock = DockStyle.None;
+        cleanup.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        AddRow(cleanup, cleanupStatus);
+        AddRow(cleanup, cleanupDetails);
+        ConfigureButton(cleanupButton);
+        cleanupButton.Size = new Size(CleanupButtonWidth, 32);
+        var (cleanupRow, arrangeCleanup) = BuildActionRow(cleanup, cleanupButton);
+        AddRow(section, cleanupRow);
         AddRow(section, Divider(new Padding(0, 6, 0, 10)));
         var launcherHeading = TextLabel("启动器选项", sectionFont);
         launcherHeading.Name = "LauncherOptionsHeading";
@@ -990,7 +1100,7 @@ internal sealed class SettingsWindow : Form
         AddRow(section, startupWarning);
         AddRow(section, Divider(new Padding(0, 2, 0, 2)));
         AddRow(section, BuildSwitchRow(closeToTray, "关闭窗口后，启动器留在托盘。"));
-        return section;
+        return (section, arrangeCleanup);
     }
 
     private TableLayoutPanel BuildSwitchRow(ToggleSwitch toggle, string description, Button? help = null)
@@ -1053,7 +1163,6 @@ internal sealed class SettingsWindow : Form
     {
         var lastLaunch = Stack();
         lastLaunch.Dock = DockStyle.Fill;
-        lastLaunch.Margin = new Padding(0, 0, 12, 0);
         var title = TextLabel("最近一次启动", sectionFont);
         title.Name = "LastLaunchHeading";
         title.Margin = new Padding(0, 0, 8, 0);
@@ -1066,20 +1175,26 @@ internal sealed class SettingsWindow : Form
 
         ConfigureButton(launchButton);
         launchButton.Size = new Size(183, 40);
-        var row = SplitRow(lastLaunch, launchButton);
+        return BuildActionRow(lastLaunch, launchButton);
+    }
+
+    private (TableLayoutPanel Panel, Action<bool> Arrange) BuildActionRow(Control copy, Button button)
+    {
+        copy.Margin = new Padding(0, 0, ActionGap, 0);
+        var row = SplitRow(copy, button);
         row.RowCount = 2;
         row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        return (row, ArrangeLaunch);
+        return (row, Arrange);
 
-        void ArrangeLaunch(bool stacked)
+        void Arrange(bool stacked)
         {
             row.SuspendLayout();
-            row.SetColumnSpan(lastLaunch, stacked ? 2 : 1);
-            row.SetCellPosition(launchButton, new TableLayoutPanelCellPosition(stacked ? 0 : 1, stacked ? 1 : 0));
-            row.SetColumnSpan(launchButton, stacked ? 2 : 1);
-            lastLaunch.Margin = new Padding(0, 0, stacked ? 0 : LogicalToDeviceUnits(12), 0);
-            launchButton.Margin = new Padding(0, stacked ? LogicalToDeviceUnits(8) : 0, 0, 0);
-            launchButton.Anchor = stacked ? AnchorStyles.Left | AnchorStyles.Right : AnchorStyles.Right;
+            row.SetColumnSpan(copy, stacked ? 2 : 1);
+            row.SetCellPosition(button, new TableLayoutPanelCellPosition(stacked ? 0 : 1, stacked ? 1 : 0));
+            row.SetColumnSpan(button, stacked ? 2 : 1);
+            copy.Margin = new Padding(0, 0, stacked ? 0 : LogicalToDeviceUnits(ActionGap), 0);
+            button.Margin = new Padding(0, stacked ? LogicalToDeviceUnits(8) : 0, 0, 0);
+            button.Anchor = stacked ? AnchorStyles.Left | AnchorStyles.Right : AnchorStyles.Right;
             row.ResumeLayout(performLayout: true);
         }
     }
@@ -1218,6 +1333,7 @@ internal sealed class SettingsWindow : Form
     {
         ApplyButtonColors(launchButton, theme, primary: true);
         launchButton.ApplyTheme(theme);
+        ApplyButtonColors(cleanupButton, theme, primary: false);
         ApplyButtonColors(testButton, theme, primary: false);
     }
 

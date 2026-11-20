@@ -12,23 +12,23 @@ internal sealed class TrayApplication : ApplicationContext
     private readonly NotifyIcon tray;
     private readonly LauncherSettingsStore store;
     private readonly StartupRegistration startupRegistration;
-    private readonly Func<LauncherOptions, Task<LaunchResult>> launch;
+    private readonly Func<LauncherOptions, Task<LaunchResult>> execute;
     private readonly System.Windows.Forms.Timer saveTimer = new() { Interval = 500 };
     private LauncherSettings savedSettings;
     private LauncherSettings? draftSettings;
     private LauncherTheme? appliedTheme;
     private Uri? proxy;
     private CancellationTokenSource? proxyCheck;
-    private bool launching;
+    private CodexOperation operation;
     private bool exiting;
     private bool disposed;
 
     internal TrayApplication(LauncherSettingsStore store, StartupRegistration startupRegistration,
-        Func<LauncherOptions, Task<LaunchResult>> launch)
+        Func<LauncherOptions, Task<LaunchResult>> execute)
     {
         this.store = store;
         this.startupRegistration = startupRegistration;
-        this.launch = launch;
+        this.execute = execute;
         savedSettings = store.Load(out string? warning);
         window = new SettingsWindow(savedSettings, icon);
         window.SetSettingsWarning(warning);
@@ -44,6 +44,7 @@ internal sealed class TrayApplication : ApplicationContext
         window.StartupChanged += (_, _) => UpdateStartupRegistration(
             () => startupRegistration.SetEnabled(window.RunAtSignIn), "无法更新 Windows 登录启动项。");
         window.LaunchRequested += async (_, _) => await LaunchFromSettingsAsync();
+        window.CleanupRequested += async (_, _) => await CleanupAsync();
         window.TestRequested += async (_, _) => await CheckProxyAsync();
         menu.LaunchItem.Click += async (_, _) => await LaunchFromSettingsAsync();
         menu.SettingsItem.Click += (_, _) => OpenSettings();
@@ -253,11 +254,15 @@ internal sealed class TrayApplication : ApplicationContext
 
     private static bool IsStartupError(Exception ex) => ex is IOException or UnauthorizedAccessException or SecurityException;
 
+    private bool CanRunCodexOperation => operation == CodexOperation.None && !exiting && !disposed;
+
     private void UpdateActions()
     {
-        bool canLaunch = proxy is not null && !launching;
-        window.SetActions(canLaunch, launching, proxy is not null && proxyCheck is null, proxyCheck is not null);
-        menu.SetState(proxy, launching);
+        bool launching = operation == CodexOperation.Launching;
+        window.SetActions(proxy is not null && CanRunCodexOperation, launching,
+            CanRunCodexOperation, operation == CodexOperation.CleaningUp,
+            proxy is not null && proxyCheck is null, proxyCheck is not null);
+        menu.SetState(proxy, launching, cleanupPending: operation is CodexOperation.ConfirmingCleanup or CodexOperation.CleaningUp);
     }
 
     private void CancelProxyCheck()
@@ -294,7 +299,7 @@ internal sealed class TrayApplication : ApplicationContext
 
     private Task LaunchFromSettingsAsync()
     {
-        if (proxy is null || draftSettings is null || launching)
+        if (proxy is null || draftSettings is null || !CanRunCodexOperation)
             return Task.CompletedTask;
         SaveSettings();
         return LaunchAsync(LauncherOptions.ForDesktop(proxy, draftSettings.RestartRunning), revealFailure: true);
@@ -302,26 +307,27 @@ internal sealed class TrayApplication : ApplicationContext
 
     private async Task LaunchAsync(LauncherOptions options, bool revealFailure)
     {
-        if (launching || exiting || disposed)
+        if (!CanRunCodexOperation)
             return;
-        launching = true;
+        operation = CodexOperation.Launching;
         window.SetLaunchStatus("正在启动…", kind: StatusKind.Working, requestedAt: DateTimeOffset.Now);
         UpdateActions();
         try
         {
-            LaunchResult result = await launch(options);
+            LaunchResult result = await execute(options);
             if (exiting || disposed)
                 return;
             switch (result.ExitCode)
             {
                 case 0:
                     window.SetLaunchStatus("Windows 已接受启动请求", kind: StatusKind.Success);
+                    window.SetCleanupStatus();
                     break;
                 case PowerShellLauncher.CodexRunningExitCode:
                     window.SetLaunchStatus("Codex 已在运行，请退出旧实例后重试", kind: StatusKind.Warning);
                     break;
-                case PowerShellLauncher.LaunchInProgressExitCode:
-                    window.SetLaunchStatus("已有启动请求，请稍后重试", kind: StatusKind.Warning);
+                case PowerShellLauncher.OperationInProgressExitCode:
+                    window.SetLaunchStatus("已有启动或清理请求，请稍后重试", kind: StatusKind.Warning);
                     break;
                 default:
                     window.SetLaunchStatus("启动失败", result.FailureDetail, StatusKind.Error);
@@ -341,7 +347,55 @@ internal sealed class TrayApplication : ApplicationContext
         }
         finally
         {
-            launching = false;
+            operation = CodexOperation.None;
+            if (!exiting && !disposed)
+                UpdateActions();
+        }
+    }
+
+    private async Task CleanupAsync()
+    {
+        if (!CanRunCodexOperation)
+            return;
+
+        operation = CodexOperation.ConfirmingCleanup;
+        UpdateActions();
+        try
+        {
+            if (!window.ConfirmCleanup() || exiting || disposed)
+                return;
+
+            operation = CodexOperation.CleaningUp;
+            window.SetCleanupStatus("正在等待 Codex 进程退出…", kind: StatusKind.Working);
+            UpdateActions();
+            LaunchResult result = await execute(LauncherOptions.ForCleanup());
+            if (exiting || disposed)
+                return;
+
+            switch (result.ExitCode)
+            {
+                case 0:
+                    window.SetCleanupStatus("清理完成，Codex 已退出。", kind: StatusKind.Success);
+                    break;
+                case PowerShellLauncher.NoCodexProcessesExitCode:
+                    window.SetCleanupStatus("当前没有需要清理的 Codex 进程。");
+                    break;
+                case PowerShellLauncher.OperationInProgressExitCode:
+                    window.SetCleanupStatus("已有启动或清理请求，请稍后重试。", kind: StatusKind.Warning);
+                    break;
+                default:
+                    window.SetCleanupStatus("清理失败", result.FailureDetail, StatusKind.Error);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!exiting && !disposed)
+                window.SetCleanupStatus("清理失败", ex.Message, StatusKind.Error);
+        }
+        finally
+        {
+            operation = CodexOperation.None;
             if (!exiting && !disposed)
                 UpdateActions();
         }
@@ -371,5 +425,13 @@ internal sealed class TrayApplication : ApplicationContext
             saveTimer.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    private enum CodexOperation
+    {
+        None,
+        Launching,
+        ConfirmingCleanup,
+        CleaningUp,
     }
 }

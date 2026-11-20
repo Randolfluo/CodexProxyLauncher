@@ -89,9 +89,9 @@ internal static class Program
         {
             ShowInformation("Codex 已在运行。请保存工作，在任务管理器中结束 Codex、ChatGPT 及相关进程，然后重新运行启动器。");
         }
-        else if (result.ExitCode == PowerShellLauncher.LaunchInProgressExitCode)
+        else if (result.ExitCode == PowerShellLauncher.OperationInProgressExitCode)
         {
-            ShowInformation("另一个启动器正在处理启动请求。请稍后重试。");
+            ShowInformation("另一个启动器正在处理启动或清理请求。请稍后重试。");
         }
         else if (result.ExitCode != 0)
         {

@@ -52,15 +52,16 @@ internal sealed class TrayQuickMenu : ContextMenuStrip
         Invalidate();
     }
 
-    public void SetState(Uri? proxy, bool isLaunching)
+    public void SetState(Uri? proxy, bool isLaunching, bool cleanupPending = false)
     {
         endpoint = proxy?.GetComponents(UriComponents.HostAndPort, UriFormat.SafeUnescaped);
         launching = isLaunching;
+        bool busy = launching || cleanupPending;
         address.Text = endpoint is null ? InvalidAddress : $"HTTP  {endpoint}";
         address.ToolTipText = address.Text;
         LaunchItem.Text = launching ? "正在启动 Codex…" : LaunchText;
-        LaunchItem.Enabled = endpoint is not null && !launching;
-        ExitItem.Enabled = !launching;
+        LaunchItem.Enabled = endpoint is not null && !busy;
+        ExitItem.Enabled = !busy;
         UpdateAnimation();
         Invalidate();
     }

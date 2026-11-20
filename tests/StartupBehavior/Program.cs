@@ -18,8 +18,9 @@ internal static class Program
         VerifyRegistration(test);
         VerifyStartupModes(test);
         VerifyTrayLifecycle(test);
+        VerifyManualCleanup(test);
         VerifyWindowDetails(test);
-        Console.WriteLine("PASS: settings, Windows login registration, startup modes, tray lifecycle, and window details.");
+        Console.WriteLine("PASS: settings, Windows login registration, startup modes, tray lifecycle, manual cleanup, and window details.");
     }
 
     private static void VerifySettings(Fixture test)
@@ -180,7 +181,8 @@ internal static class Program
             {
                 Require(!window.Visible && tray.Visible && attempts == 1, "Silent startup must queue one request in the tray.");
                 Button launch = Control<Button>(window, "LaunchCodex");
-                Require(!launch.Enabled && launch.Text == "正在启动 Codex…", "A pending request must show busy feedback and block repeat clicks.");
+                Require(!launch.Enabled && launch.Text == "正在启动 Codex…" && !Control<Button>(window, "CleanupCodex").Enabled,
+                    "A pending launch must show busy feedback and block both actions.");
                 requestedAt = Control<Label>(window, "LaunchTime").Text;
                 Require(!string.IsNullOrEmpty(requestedAt), "The time must be recorded when the request starts.");
                 test.StartDuplicate(DesktopLaunchMode.SignIn);
@@ -236,6 +238,129 @@ internal static class Program
             "Closing must save launcher preferences while keeping the last valid proxy.");
     }
 
+    private static void VerifyManualCleanup(Fixture test)
+    {
+        test.Settings.Save(LauncherSettings.Default with { Appearance = AppearanceMode.Dark });
+        var cleanupCompletion = new TaskCompletionSource<LaunchResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<LaunchResult> cleanupResult = cleanupCompletion.Task;
+        var attempts = new List<LauncherOptions>();
+        int step = 0;
+        string? launchTime = null;
+        string? launchStatus = null;
+        string? idleStatus = null;
+        test.Run(DesktopLaunchMode.Interactive, options =>
+        {
+            attempts.Add(options);
+            return options.CleanupOnly ? cleanupResult : Task.FromResult(new LaunchResult(0, "", ""));
+        }, (app, window, tray) =>
+        {
+            if (step == 1)
+                return; // The confirmation runs a nested message loop.
+
+            Button cleanup = Control<Button>(window, "CleanupCodex");
+            Button launch = Control<Button>(window, "LaunchCodex");
+            Label status = Control<Label>(window, "CleanupStatus");
+            LinkLabel details = Control<LinkLabel>(window, "CleanupDetails");
+            Label time = Control<Label>(window, "LaunchTime");
+            Label lastLaunch = Control<Label>(window, "LaunchStatus");
+            TextBox port = Control<TextBox>(window, "ProxyPort");
+            var menu = (TrayQuickMenu)tray.ContextMenuStrip!;
+            if (step == 0)
+            {
+                step = 1;
+                window.ApplyTheme(LauncherTheme.Dark);
+                launch.PerformClick();
+                Require(attempts.Count == 1 && !attempts[0].CleanupOnly && time.Visible, "A launch must establish the prior record.");
+                launchTime = time.Text;
+                launchStatus = lastLaunch.Text;
+                idleStatus = status.Text;
+
+                ReplyToCleanup(window, cleanup, menu, confirm: false);
+                Require(attempts.Count == 1 && cleanup.Enabled && menu.LaunchItem.Enabled && status.Text == idleStatus,
+                    "Cancelling cleanup must leave the process and feedback untouched and restore the actions.");
+
+                string validPort = port.Text;
+                port.Text = "invalid";
+                Require(cleanup.Enabled && !launch.Enabled && !Control<CheckBox>(window, "RestartRunning").Checked,
+                    "Manual cleanup must be available without a valid proxy or the automatic cleanup setting.");
+                ReplyToCleanup(window, cleanup, menu, confirm: true);
+                Require(attempts.Count == 2 && attempts[1].CleanupOnly && !attempts[1].RestartRunning &&
+                    !cleanup.Enabled && cleanup.Text == "正在清理…" && status.Text.Contains("等待 Codex"),
+                    "Confirmation must start exactly one cleanup-only operation and show progress.");
+
+                port.Text = validPort;
+                Require(!launch.Enabled && !menu.LaunchItem.Enabled && !menu.ExitItem.Enabled &&
+                    Control<Button>(window, "TestProxy").Enabled,
+                    "Cleanup must block separate launches while leaving proxy testing available.");
+                launch.PerformClick();
+                menu.LaunchItem.PerformClick();
+                cleanup.PerformClick();
+                Require(attempts.Count == 2, "A pending cleanup must reject repeated cleanup or launch requests.");
+                step = 2;
+                cleanupCompletion.SetResult(new LaunchResult(0, "", ""));
+                return;
+            }
+
+            if (!cleanup.Enabled)
+                return;
+            step = 1;
+            Require(window.Visible && cleanup.Text == "清理旧进程…" && status.Text == "清理完成，Codex 已退出。" &&
+                launch.Enabled && menu.LaunchItem.Enabled && menu.ExitItem.Enabled && !details.Visible &&
+                time.Text == launchTime && lastLaunch.Text == launchStatus,
+                "A successful cleanup must record its own result, keep the window open, and preserve the launch record.");
+
+            var results = new[]
+            {
+                (new LaunchResult(PowerShellLauncher.NoCodexProcessesExitCode, "", ""), "当前没有需要清理的 Codex 进程。"),
+                (new LaunchResult(PowerShellLauncher.OperationInProgressExitCode, "", ""), "已有启动或清理请求，请稍后重试。"),
+                (new LaunchResult(1, "", "Fixture failure"), "清理失败"),
+            };
+            foreach (var (result, expectedStatus) in results)
+            {
+                cleanupResult = Task.FromResult(result);
+                ReplyToCleanup(window, cleanup, menu, confirm: true);
+                Require(cleanup.Enabled && status.Text == expectedStatus && details.Visible == (result.ExitCode == 1) &&
+                    time.Text == launchTime && lastLaunch.Text == launchStatus,
+                    "Cleanup feedback must report the outcome independently and allow a retry.");
+            }
+            Require(attempts.Count == 5 && attempts.Skip(1).All(request => request.CleanupOnly),
+                "Cleanup must never issue a separate launch request.");
+            launch.PerformClick();
+            Require(attempts.Count == 6 && !attempts[5].CleanupOnly && status.Text == idleStatus && !details.Visible,
+                "A later proxy launch must still work and clear stale cleanup feedback.");
+            app.ExitThread();
+        });
+    }
+
+    private static void ReplyToCleanup(SettingsWindow window, Button cleanup, TrayQuickMenu menu, bool confirm)
+    {
+        using var response = new Timer { Interval = 10 };
+        bool sawDialog = false;
+        response.Tick += (_, _) =>
+        {
+            Form? dialog = Application.OpenForms.Cast<Form>().SingleOrDefault(form => form.Name == "ConfirmCleanup");
+            if (dialog is null)
+                return;
+            response.Stop();
+            sawDialog = true;
+            Button cancel = Control<Button>(dialog, "CancelCleanup");
+            Button accept = Control<Button>(dialog, "ConfirmCleanupAction");
+            Require(dialog.Owner == window && dialog.AcceptButton == cancel && dialog.CancelButton == cancel &&
+                accept.Left >= cancel.Right && !menu.LaunchItem.Enabled && !menu.ExitItem.Enabled,
+                "Confirmation must default to cancel and prevent competing tray actions.");
+            Require(dialog.BackColor == LauncherTheme.Dark.Surface && accept.BackColor == LauncherTheme.Dark.Error,
+                "Confirmation must follow the current theme and highlight the destructive action.");
+            Size preferred = accept.GetPreferredSize(Size.Empty);
+            Require(accept.Width >= preferred.Width && accept.Height >= preferred.Height &&
+                accept.Parent!.ClientRectangle.Contains(accept.Bounds),
+                "The complete confirmation label must fit at the dialog DPI.");
+            (confirm ? accept : cancel).PerformClick();
+        };
+        response.Start();
+        cleanup.PerformClick();
+        Require(sawDialog, "Clicking cleanup must open a confirmation before starting work.");
+    }
+
     private static void VerifyWindowDetails(Fixture test)
     {
         test.Settings.Save(LauncherSettings.Default);
@@ -253,11 +378,11 @@ internal static class Program
                     .InformationalVersion.Split('+')[0];
                 Require(Control<Label>(window, "LauncherVersion").Text == $"version {version}",
                     "The footer must show this build's version.");
-                int[] options = new[] { "ImportantOptionsHeading", "RestartRunning", "LauncherOptionsHeading",
+                int[] options = new[] { "ImportantOptionsHeading", "RestartRunning", "CleanupCodex", "LauncherOptionsHeading",
                     "RunAtSignIn", "StartSilently", "LaunchCodexOnStartup", "CloseToTray" }
                     .Select(name => Control<Control>(window, name).PointToScreen(Point.Empty).Y).ToArray();
                 Require(options.Zip(options.Skip(1), (first, second) => first < second).All(inOrder => inOrder),
-                    "The important option must come first, followed by the three adjacent sign-in options.");
+                    "Cleanup must sit below the restart switch, ahead of the adjacent sign-in options.");
                 Require(Control<CheckBox>(window, "RunAtSignIn").AccessibleName == "登录自启" &&
                     Control<CheckBox>(window, "LaunchCodexOnStartup").AccessibleName == "登录自启后使用代理启动 Codex",
                     "The sign-in options must use the reviewed wording.");
@@ -325,7 +450,7 @@ internal static class Program
         });
     }
 
-    private static T Control<T>(SettingsWindow window, string name) where T : Control =>
+    private static T Control<T>(Form window, string name) where T : Control =>
         (T)window.Controls.Find(name, searchAllChildren: true).Single();
 
     private static Task<LaunchResult> UnexpectedLaunch(LauncherOptions _) =>

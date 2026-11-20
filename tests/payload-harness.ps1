@@ -109,7 +109,7 @@ function Get-StartApps {
 function Get-AppxPackage { param($Name)
     if ($Name -ne 'OpenAI.Codex') { throw 'Unexpected package name.' }
     $script:packageCalls++
-    if ($script:case.Name -ne 'missing') {
+    if ($script:case.Name -ne 'missing' -and -not $script:case.NoPackage) {
         [pscustomobject]@{
             PackageFullName = 'FixtureFullName'; PackageFamilyName = 'OpenAI.Codex_fixture'; InstallLocation = $installRoot
         }
@@ -117,6 +117,7 @@ function Get-AppxPackage { param($Name)
 }
 function Get-AppxPackageManifest { param($Package)
     if ($Package -ne 'FixtureFullName') { throw 'Unexpected package lookup.' }
+    $script:manifestCalls++
     if ($script:case.Name -eq 'missing-before-restart') { return }
     [pscustomobject]@{ Package = [pscustomobject]@{ Applications = [pscustomobject]@{
         Application = @([pscustomobject]@{ Id = 'Desktop' })
@@ -200,7 +201,23 @@ $cases = @(
         Error = 'ChatGPT (PID 120)'; ErrorProcesses = @('codex (PID 121)', 'codex-code-mode-host (PID 122)')
     }
     @{ Name = 'missing-before-restart'; Restart = $true; Processes = @(New-FixtureProcess 101 'ChatGPT'); Error = $missingError }
-    @{ Name = 'concurrent'; Restart = $true; StartApps = $true; Processes = @(New-FixtureProcess 101 'ChatGPT'); Code = 4; MenuCalls = 0 }
+    @{ Name = 'concurrent'; Concurrent = $true; Restart = $true; StartApps = $true; Processes = @(New-FixtureProcess 101 'ChatGPT'); Code = 4; MenuCalls = 0 }
+    @{
+        Name = 'cleanup'; Cleanup = $true; Code = 0
+        Processes = @(
+            New-FixtureProcess 101 'ChatGPT'
+            New-FixtureProcess 103 'codex-command-runner' -AppearsAfter 101
+        ) + $otherProcesses
+        Stopped = @(101, 103); TerminationHandles = @(101, 103)
+    }
+    @{ Name = 'cleanup-idle'; Cleanup = $true; Processes = $otherProcesses; Code = 5 }
+    @{ Name = 'cleanup-no-package'; Cleanup = $true; NoPackage = $true; Processes = @(New-FixtureProcess 101 'ChatGPT'); Code = 5 }
+    @{ Name = 'cleanup-concurrent'; Cleanup = $true; Concurrent = $true; Processes = @(New-FixtureProcess 101 'ChatGPT'); Code = 4; PackageCalls = 0 }
+    @{
+        Name = 'cleanup-timeout'; Cleanup = $true
+        Processes = @(New-FixtureProcess 121 'codex' -DenyTermination)
+        TerminationHandles = @(121); Error = 'codex (PID 121)'
+    }
 )
 
 $checks = 0
@@ -208,16 +225,20 @@ foreach ($script:case in $cases) {
     $script:processes = $case.Processes
     $script:events = [Collections.Generic.List[string]]::new()
     $script:terminationHandles = [Collections.Generic.HashSet[int]]::new()
-    $script:menuCalls = 0; $script:packageCalls = 0
+    $script:menuCalls = 0; $script:packageCalls = 0; $script:manifestCalls = 0
     [LauncherCompatibility.Desktop]::Calls = 0
     $caught = $null
     $status = $null
     $elapsed = [Diagnostics.Stopwatch]::StartNew()
     try {
         $attempt = {
-            & $payload -Proxy 'http://127.0.0.1:7890' -AppId ([string]$case.AppId) -RestartRunning:([bool]$case.Restart)
+            if ($case.Cleanup) {
+                & $payload -CleanupOnly
+            } else {
+                & $payload -Proxy 'http://127.0.0.1:7890' -AppId ([string]$case.AppId) -RestartRunning:([bool]$case.Restart)
+            }
         }
-        if ($case.Name -eq 'concurrent') {
+        if ($case.Concurrent) {
             $status = Invoke-WithCompetingLaunch $attempt
         } else {
             $status = & $attempt
@@ -233,11 +254,15 @@ foreach ($script:case in $cases) {
     } elseif ($caught -or $status -isnot [int] -or $status -ne $case.Code) {
         throw "$($case.Name): unexpected status '$status' or error '$caught'."
     }
-    if ($case.Name -eq 'permissions-and-timeout' -and ($elapsed.Elapsed.TotalSeconds -lt 9 -or $elapsed.Elapsed.TotalSeconds -gt 20)) {
+    if ($case.Name -in 'permissions-and-timeout', 'cleanup-timeout' -and
+        ($elapsed.Elapsed.TotalSeconds -lt 9 -or $elapsed.Elapsed.TotalSeconds -gt 20)) {
         throw 'The wait did not respect the shared exit deadline.'
     }
     if ($case.ContainsKey('MenuCalls') -and $script:menuCalls -ne $case.MenuCalls) { throw "$($case.Name): menu lookup count mismatch." }
     if ($case.ContainsKey('PackageCalls') -and $script:packageCalls -ne $case.PackageCalls) { throw "$($case.Name): package lookup count mismatch." }
+    if ($case.Cleanup -and ($script:menuCalls -ne 0 -or $script:manifestCalls -ne 0 -or [LauncherCompatibility.Desktop]::Calls -ne 0)) {
+        throw "$($case.Name): cleanup must avoid application ID lookup and activation."
+    }
 
     $expectedEvents = @(foreach ($processId in $case.Stopped) { "terminate:$processId" })
     if ($case.ExpectedId) {

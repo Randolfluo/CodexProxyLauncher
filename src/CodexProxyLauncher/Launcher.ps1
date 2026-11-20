@@ -4,7 +4,8 @@
 param(
     [string]$Proxy = 'http://127.0.0.1:7897',
     [string]$AppId = '',
-    [switch]$RestartRunning
+    [switch]$RestartRunning,
+    [switch]$CleanupOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -194,13 +195,15 @@ function Get-RunningCodex {
 
 function Stop-RunningCodex {
     $restartTimer = [Diagnostics.Stopwatch]::StartNew()
+    $hadProcesses = $false
     while ($true) {
         $running = @(Get-RunningCodex -RestartTimer $restartTimer)
-        if ($running.Count -eq 0) { return }
+        if ($running.Count -eq 0) { return $hadProcesses }
+        $hadProcesses = $true
         $remainingMilliseconds = $exitTimeoutMilliseconds - $restartTimer.ElapsedMilliseconds
         if ($remainingMilliseconds -le 0) {
             $running = @(Get-RunningCodex)
-            if ($running.Count -eq 0) { return }
+            if ($running.Count -eq 0) { return $hadProcesses }
             $details = ($running | ForEach-Object { '{0} (PID {1})' -f $_.Name, $_.Id }) -join ', '
             throw ([string]::Join([Environment]::NewLine, '请在任务管理器中结束以下进程，然后重试。', $details))
         }
@@ -213,6 +216,11 @@ $ownsMutex = $false
 try {
     try { $ownsMutex = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $ownsMutex = $true }
     if (-not $ownsMutex) { return 4 }
+
+    if ($CleanupOnly) {
+        if (Stop-RunningCodex) { return 0 }
+        return 5
+    }
 
     if (-not $RestartRunning -and @(Get-RunningCodex).Count -ne 0) { return 3 }
 
@@ -235,7 +243,7 @@ try {
     }
 
     if ($RestartRunning) {
-        Stop-RunningCodex
+        [void](Stop-RunningCodex)
     } elseif (@(Get-RunningCodex).Count -ne 0) {
         return 3
     }

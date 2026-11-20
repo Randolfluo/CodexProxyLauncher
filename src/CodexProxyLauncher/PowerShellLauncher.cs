@@ -16,7 +16,8 @@ internal static class PowerShellLauncher
 {
     // These exit codes are returned by Launcher.ps1 for handled states.
     public const int CodexRunningExitCode = 3;
-    public const int LaunchInProgressExitCode = 4;
+    public const int OperationInProgressExitCode = 4;
+    public const int NoCodexProcessesExitCode = 5;
     private const string PayloadEnvironmentVariable = "CODEX_PROXY_LAUNCHER_PAYLOAD";
 
     private static byte[] ReadPayload()
@@ -49,8 +50,11 @@ internal static class PowerShellLauncher
         command.AppendLine("try {");
         command.AppendLine($"  $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:{PayloadEnvironmentVariable}))");
         command.AppendLine($"  $env:{PayloadEnvironmentVariable} = $null");
-        command.AppendLine("  $proxy = " + AsData(options.Proxy));
-        command.AppendLine("  $appId = " + AsData(options.AppId));
+        if (!options.CleanupOnly)
+        {
+            command.AppendLine("  $proxy = " + AsData(options.Proxy));
+            command.AppendLine("  $appId = " + AsData(options.AppId));
+        }
         if (options.SelfTest)
         {
             command.AppendLine("  $tokens = $null; $parseErrors = $null");
@@ -58,7 +62,9 @@ internal static class PowerShellLauncher
             command.AppendLine("  if ($parseErrors.Count) { throw (($parseErrors | ForEach-Object { $_.Message }) -join [Environment]::NewLine) }");
             command.AppendLine("  $parameters = @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })");
             command.AppendLine("  if ($parameters -notcontains 'Proxy' -or $parameters -notcontains 'AppId') { throw 'Expected script parameters are missing.' }");
-            command.AppendLine("  if (-not ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'RestartRunning' -and $_.StaticType -eq [switch] })) { throw 'Expected restart switch is missing.' }");
+            command.AppendLine("  foreach ($name in 'RestartRunning', 'CleanupOnly') {");
+            command.AppendLine("    if (-not ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq $name -and $_.StaticType -eq [switch] })) { throw \"Expected switch is missing: $name\" }");
+            command.AppendLine("  }");
             command.AppendLine("  [Console]::WriteLine('PASS: embedded PowerShell script parsed.')");
             command.AppendLine("  [Console]::WriteLine('Proxy: ' + $proxy)");
             command.AppendLine("  [Console]::WriteLine('AppId: ' + $appId)");
@@ -68,7 +74,9 @@ internal static class PowerShellLauncher
         }
         else
         {
-            command.AppendLine($"  $status = & ([scriptblock]::Create($payload)) -Proxy $proxy -AppId $appId -RestartRunning:${(options.RestartRunning ? "true" : "false")}");
+            string parameters = options.CleanupOnly ? "-CleanupOnly"
+                : $"-Proxy $proxy -AppId $appId -RestartRunning:${(options.RestartRunning ? "true" : "false")}";
+            command.AppendLine($"  $status = & ([scriptblock]::Create($payload)) {parameters}");
             command.AppendLine("  exit $status");
         }
         command.AppendLine("} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }");

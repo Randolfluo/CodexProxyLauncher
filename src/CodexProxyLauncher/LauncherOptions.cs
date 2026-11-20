@@ -27,6 +27,7 @@ internal sealed class LauncherOptions
     public string Proxy { get; private set; } = DefaultProxy;
     public string AppId { get; private set; } = "";
     public bool RestartRunning { get; private set; }
+    public bool CleanupOnly { get; private set; }
     public bool SelfTest { get; private set; }
     public bool Help { get; private set; }
 
@@ -50,6 +51,8 @@ internal sealed class LauncherOptions
             Proxy = proxy.GetComponents(UriComponents.SchemeAndServer | UriComponents.StrongPort, UriFormat.UriEscaped),
             RestartRunning = restartRunning,
         };
+
+    public static LauncherOptions ForCleanup() => new() { CleanupOnly = true };
 
     public static LauncherOptions Parse(string[] args)
     {
