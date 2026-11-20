@@ -29,6 +29,7 @@ internal sealed class SettingsWindow : Form
     private const int ScRestore = 0xF120;
     private const int SizeRestored = 0;
     private const int SizeMinimized = 1;
+    private const int WvrRedraw = 0x0300;
     private const uint RdwInvalidate = 0x0001;
     private const uint RdwErase = 0x0004;
     private const uint RdwAllChildren = 0x0080;
@@ -473,7 +474,8 @@ internal sealed class SettingsWindow : Form
             // When zoomed, keep the client inside the destination monitor's work area.
             if (message.LParam != IntPtr.Zero && IsZoomed(message.HWnd))
                 FitMaximizedClientArea(message.LParam);
-            message.Result = IntPtr.Zero;
+            // Right-aligned controls move with the client edge, so old pixels are invalid after a resize.
+            message.Result = message.WParam == IntPtr.Zero ? IntPtr.Zero : (IntPtr)WvrRedraw;
             return;
         }
 
@@ -489,9 +491,9 @@ internal sealed class SettingsWindow : Form
             message.LParam = SkipNonClientPaint;
         }
 
-        if (message.Msg == WmWindowPosChanged && lastSizeType != SizeRestored && !IsIconic(message.HWnd))
+        if (message.Msg == WmWindowPosChanged)
         {
-            RestoreWindowPosition(ref message);
+            UpdateWindowPosition(ref message);
             return;
         }
 
@@ -512,11 +514,13 @@ internal sealed class SettingsWindow : Form
         base.WndProc(ref message);
     }
 
-    private void RestoreWindowPosition(ref Message message)
+    private void UpdateWindowPosition(ref Message message)
     {
-        bool wasMinimized = lastSizeType == SizeMinimized;
+        Size previousClientSize = ClientSize;
+        int previousSizeType = lastSizeType;
         bool previous = calculatingRestoreBounds;
-        calculatingRestoreBounds = !IsZoomed(message.HWnd);
+        if (previousSizeType != SizeRestored && !IsIconic(message.HWnd))
+            calculatingRestoreBounds = !IsZoomed(message.HWnd);
         try
         {
             base.WndProc(ref message);
@@ -526,8 +530,9 @@ internal sealed class SettingsWindow : Form
             calculatingRestoreBounds = previous;
         }
 
-        // Windows can restore directly from the taskbar. Paint all controls after the layout settles.
-        if (wasMinimized && lastSizeType != SizeMinimized)
+        // WM_SIZE and WinForms layout have run. Paint the new layout before Windows presents the resize.
+        if (Visible && lastSizeType != SizeMinimized &&
+            (ClientSize != previousClientSize || lastSizeType != previousSizeType))
             RedrawWindow(message.HWnd, IntPtr.Zero, IntPtr.Zero, RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow);
     }
 

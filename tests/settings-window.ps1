@@ -212,22 +212,44 @@ try {
         }
     }
 
-    $window.WindowState = 'Maximized'
+    $maximize = $window.Controls.Find('MaximizeWindow', $true)[0]
+    $testButton = $window.Controls.Find('TestProxy', $true)[0]
+    $rightColumnPaint = @{ Count = 0 }
+    $testButton.add_Paint({ $rightColumnPaint.Count++ }.GetNewClosure())
+
+    $count = $rightColumnPaint.Count
+    $maximize.PerformClick()
     $maximizedClient = $window.RectangleToScreen($window.ClientRectangle)
-    if (-not $area.Contains($maximizedClient)) {
+    if ($window.WindowState -ne 'Maximized' -or -not $area.Contains($maximizedClient)) {
         throw 'The maximized content must stay inside the working area.'
     }
-    $window.WindowState = 'Normal'
-    if ($window.Bounds -ne $normal) {
-        throw 'The window must return to its original bounds after maximizing.'
+    if ($rightColumnPaint.Count -le $count) {
+        throw 'Maximizing must repaint the controls at their new positions before returning.'
     }
+    [Windows.Forms.Application]::DoEvents()
+
+    $count = $rightColumnPaint.Count
+    $maximize.PerformClick()
+    if ($window.WindowState -ne 'Normal' -or $window.Bounds -ne $normal -or $rightColumnPaint.Count -le $count) {
+        throw 'Restoring from maximized must return to the normal bounds and immediately repaint the controls.'
+    }
+
+    $narrowWidth = [Math]::Max($window.MinimumSize.Width, $window.LogicalToDeviceUnits(350))
+    foreach ($width in $narrowWidth, $normal.Width, $narrowWidth, $normal.Width) {
+        $count = $rightColumnPaint.Count
+        $window.Width = $width
+        if ($window.Width -ne $width -or $rightColumnPaint.Count -le $count) {
+            throw "Changing the width to $width must repaint the right-side controls at every step."
+        }
+    }
+
     $window.Hide()
     $null = $openFromTray.Invoke($window, @())
     if (-not $window.Visible -or $window.Bounds -ne $normal -or $window.Handle -ne $handle) {
         throw 'Opening a hidden window from the tray must reuse its existing controls and bounds.'
     }
 
-    Write-Output 'PASS: first show, buffered resize, activation frame, and taskbar and tray restore.'
+    Write-Output 'PASS: first show, live resize, activation frame, maximize and restore, and taskbar and tray restore.'
 } finally {
     if ($window) { $window.Dispose() }
     if ($backdrop) { $backdrop.Dispose() }
