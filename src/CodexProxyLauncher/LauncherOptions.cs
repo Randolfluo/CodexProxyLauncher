@@ -1,11 +1,19 @@
 namespace CodexProxyLauncher;
 
+internal enum DesktopLaunchMode
+{
+    Interactive,
+    SignIn,
+    Tray,
+}
+
 internal sealed class LauncherOptions
 {
     public const string DefaultProxy = "http://127.0.0.1:7897";
     public const string TrayArgument = "--tray";
+    public const string SignInArgument = "--boot";
     public const string HelpText = "Codex Proxy Launcher\r\n\r\n" +
-        "Double-click to open the settings window.\r\n" +
+        "Double-click to open the settings window. Automatic startup settings apply at Windows sign-in.\r\n" +
         "If Codex is running, quit it in Task Manager or opt in to restarting it.\r\n\r\nOptions:\r\n" +
         "  --tray       Start the launcher in the notification area.\r\n" +
         "  --launch     Launch Codex once (default proxy: http://127.0.0.1:7897).\r\n" +
@@ -21,6 +29,20 @@ internal sealed class LauncherOptions
     public bool RestartRunning { get; private set; }
     public bool SelfTest { get; private set; }
     public bool Help { get; private set; }
+
+    public static DesktopLaunchMode? GetDesktopMode(string[] args)
+    {
+        if (args.Length == 0)
+            return DesktopLaunchMode.Interactive;
+        if (args.Length != 1)
+            return null;
+        return args[0].ToLowerInvariant() switch
+        {
+            SignInArgument => DesktopLaunchMode.SignIn,
+            TrayArgument => DesktopLaunchMode.Tray,
+            _ => null,
+        };
+    }
 
     public static LauncherOptions ForDesktop(Uri proxy, bool restartRunning) =>
         new()

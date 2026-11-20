@@ -1,13 +1,13 @@
-using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace CodexProxyLauncher;
 
 internal sealed class SettingsWindow : Form
 {
-    private static readonly Size DefaultClientSize = new(680, 532);
+    private static readonly Size DefaultClientSize = new(680, 680);
     private static readonly Size MinimumClientSize = new(320, 256);
     private const int CompactWindowWidth = 520;
     private const int StackedFieldsWidth = 400;
@@ -33,6 +33,13 @@ internal sealed class SettingsWindow : Form
     private const uint RdwErase = 0x0004;
     private const uint RdwAllChildren = 0x0080;
     private const uint RdwUpdateNow = 0x0100;
+    private const string RestartHelpTitle = "为什么要清理旧进程？";
+    private const string RestartHelpText =
+        "启动器会在启动 Codex 时传入当前代理设置。\r\n" +
+        "如果 Codex 已在运行，需要先退出旧实例，再启动才能用上这次的代理。\r\n\r\n" +
+        "开启后，启动器会先结束旧实例，再发起新的启动请求。\r\n" +
+        "旧实例里正在运行的任务可能中断。\r\n\r\n" +
+        "关闭时，若检测到旧实例，「最近一次启动」会提示你先退出 Codex，再重试。";
     private static readonly IntPtr SkipNonClientPaint = new(-1);
 
     private int lastSizeType;
@@ -44,6 +51,7 @@ internal sealed class SettingsWindow : Form
     private readonly Font captionFont = new("Microsoft YaHei UI", 8.5f);
     private Font addressFont = new("Consolas", AddressFontSizeInPoints);
     private readonly ToolTip captionToolTip = new();
+    private readonly ToolTip restartToolTip = new() { ToolTipTitle = RestartHelpTitle, InitialDelay = 300, AutoPopDelay = 20000 };
     private Bitmap? appMark;
     private readonly List<Action<LauncherTheme>> themeBindings = [];
     private readonly Dictionary<Label, StatusKind> statusKinds = [];
@@ -58,14 +66,20 @@ internal sealed class SettingsWindow : Form
     private readonly TextBox host = new() { Name = "ProxyHost", AccessibleName = "代理主机", MaxLength = 255 };
     private readonly TextBox port = new() { Name = "ProxyPort", AccessibleName = "代理端口" };
     private readonly Button testButton = new() { Name = "TestProxy", Text = "检测代理" };
-    private readonly Button launchButton = new() { Name = "LaunchCodex", Text = "使用代理启动 Codex" };
-    private readonly ToggleSwitch restart = new() { AccessibleName = "启动前清理旧进程" };
-    private readonly ToggleSwitch startup = new() { AccessibleName = "登录时启动启动器" };
+    private readonly LaunchActionButton launchButton = new() { Name = "LaunchCodex" };
+    private readonly ToggleSwitch restart = new() { Name = "RestartRunning", AccessibleName = "启动前清理旧进程" };
+    private readonly ToggleSwitch startSilently = new() { Name = "StartSilently", AccessibleName = "静默启动" };
+    private readonly ToggleSwitch closeToTray = new() { Name = "CloseToTray", AccessibleName = "关闭时最小化到托盘" };
+    private readonly ToggleSwitch startup = new() { Name = "RunAtSignIn", AccessibleName = "登录自启" };
+    private readonly ToggleSwitch launchOnStartup = new() { Name = "LaunchCodexOnStartup", AccessibleName = "登录自启后使用代理启动 Codex" };
+    private readonly Button closeButton;
+    private readonly Label launchTime;
     private readonly Label validation = TextLabel("");
     private readonly Label tcpStatus = TextLabel("");
     private readonly Label httpStatus = TextLabel("");
     private readonly Label launchStatus = TextLabel("");
     private readonly Label settingsWarning = TextLabel("");
+    private readonly Label startupWarning = TextLabel("");
     private readonly Label saveStatus = TextLabel("更改将自动保存");
     private readonly LinkLabel launchDetails = new()
     {
@@ -74,6 +88,7 @@ internal sealed class SettingsWindow : Form
     private string? launchError;
     private bool invalidHost;
     private bool invalidPort;
+    private bool updatingStartup;
 
     public event EventHandler? AppearanceChanged;
     public event EventHandler? SettingsEdited;
@@ -100,6 +115,12 @@ internal sealed class SettingsWindow : Form
         MinimumSize = MinimumClientSize;
         Font = bodyFont;
         Appearance = settings.Appearance;
+        closeButton = BuildCaptionButton(CaptionCommand.Close);
+        launchTime = CaptionLabel("");
+        launchTime.Name = "LaunchTime";
+        launchTime.Margin = new Padding(0);
+        launchTime.Visible = false;
+        launchStatus.Name = "LaunchStatus";
 
         var frame = Stack();
         frame.AutoSize = false;
@@ -155,12 +176,15 @@ internal sealed class SettingsWindow : Form
                 contents.ResumeLayout(performLayout: true);
             }
             arrangeHeader(widths.InnerWidth);
+            int warningWidth = ClientSize.Width - Padding.Horizontal - contents.Padding.Horizontal -
+                SystemInformation.VerticalScrollBarWidth;
+            startupWarning.MaximumSize = new Size(Math.Max(1, warningWidth), 0);
         }
 
         ClientSizeChanged += (_, _) => Reflow();
         PaddingChanged += (_, _) => Reflow();
         Resize += (_, _) => UpdateMaximizeButton(maximize, resizeGrip);
-        DpiChanged += (_, _) => BeginInvoke((MethodInvoker)(() =>
+        DpiChanged += (_, _) => BeginInvoke((Action)(() =>
         {
 #if NETFRAMEWORK
             UpdateNativeInputFont();
@@ -172,6 +196,10 @@ internal sealed class SettingsWindow : Form
         host.Text = settings.Host;
         port.Text = settings.Port.ToString(CultureInfo.InvariantCulture);
         restart.Checked = settings.RestartRunning;
+        startSilently.Checked = settings.StartSilently;
+        closeToTray.Checked = settings.CloseToTray;
+        launchOnStartup.Checked = settings.LaunchCodexOnStartup;
+        UpdateCloseBehavior();
         appearanceChoices.First(choice => choice.Mode == Appearance).Button.Checked = true;
         SetProxyStatus(new("待检测", "待检测"));
         SetLaunchStatus("尚未启动");
@@ -193,7 +221,18 @@ internal sealed class SettingsWindow : Form
         host.TextChanged += OnSettingsEdited;
         port.TextChanged += OnSettingsEdited;
         restart.CheckedChanged += OnSettingsEdited;
-        startup.CheckedChanged += (_, _) => StartupChanged?.Invoke(this, EventArgs.Empty);
+        startSilently.CheckedChanged += OnSettingsEdited;
+        launchOnStartup.CheckedChanged += OnSettingsEdited;
+        closeToTray.CheckedChanged += (_, _) =>
+        {
+            UpdateCloseBehavior();
+            OnSettingsEdited(this, EventArgs.Empty);
+        };
+        startup.CheckedChanged += (_, _) =>
+        {
+            if (!updatingStartup)
+                StartupChanged?.Invoke(this, EventArgs.Empty);
+        };
         testButton.Click += (_, _) => TestRequested?.Invoke(this, EventArgs.Empty);
         launchButton.Click += (_, _) => LaunchRequested?.Invoke(this, EventArgs.Empty);
         launchDetails.LinkClicked += (_, _) =>
@@ -205,12 +244,19 @@ internal sealed class SettingsWindow : Form
         Reflow();
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    internal bool RunAtSignIn { get => startup.Checked; set => startup.Checked = value; }
-
+    internal bool RunAtSignIn => startup.Checked;
+    internal bool CloseToTray => closeToTray.Checked;
     internal AppearanceMode Appearance { get; private set; }
 
-    internal void DisableStartupSwitch() => startup.Enabled = false;
+    internal void SetStartupState(bool registered, bool canEdit, string? warning)
+    {
+        updatingStartup = true;
+        startup.Checked = registered;
+        updatingStartup = false;
+        startup.Enabled = canEdit;
+        startupWarning.Text = warning ?? "";
+        startupWarning.Visible = warning is not null;
+    }
 
     internal void OpenFromTray()
     {
@@ -234,14 +280,22 @@ internal sealed class SettingsWindow : Form
             : !validPort ? "代理端口必须是 1–65535 之间的整数。" : "";
         validation.Visible = validation.Text.Length != 0;
         return validHost && validPort
-            ? new LauncherSettings(proxyHost, proxyPort, restart.Checked) { Appearance = Appearance }
+            ? ReadPreferences(new LauncherSettings(proxyHost, proxyPort, restart.Checked))
             : null;
     }
 
+    internal LauncherSettings ReadPreferences(LauncherSettings settings) => settings with
+    {
+        Appearance = Appearance,
+        StartSilently = startSilently.Checked,
+        CloseToTray = CloseToTray,
+        LaunchCodexOnStartup = launchOnStartup.Checked,
+    };
+
     public void SetActions(bool launchEnabled, bool launchBusy, bool testEnabled, bool testBusy)
     {
+        launchButton.SetBusy(launchBusy);
         launchButton.Enabled = launchEnabled;
-        launchButton.Text = launchBusy ? "正在启动 Codex…" : "使用代理启动 Codex";
         testButton.Enabled = testEnabled;
         testButton.Text = testBusy ? "检测中…" : "检测代理";
         ApplyActionColors();
@@ -253,8 +307,14 @@ internal sealed class SettingsWindow : Form
         SetStatus(httpStatus, result.HttpStatus, result.HttpKind);
     }
 
-    public void SetLaunchStatus(string status, string? error = null, StatusKind kind = StatusKind.Neutral)
+    public void SetLaunchStatus(string status, string? error = null, StatusKind kind = StatusKind.Neutral,
+        DateTimeOffset? requestedAt = null)
     {
+        if (requestedAt is DateTimeOffset time)
+        {
+            launchTime.Text = time.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            launchTime.Visible = true;
+        }
         SetStatus(launchStatus, status, kind);
         launchError = error;
         launchDetails.Visible = !string.IsNullOrWhiteSpace(error);
@@ -332,6 +392,7 @@ internal sealed class SettingsWindow : Form
         ForeColor = palette.Ink;
         validation.ForeColor = palette.Error;
         settingsWarning.ForeColor = palette.Warning;
+        startupWarning.ForeColor = palette.Warning;
         launchDetails.LinkColor = palette.Accent;
         launchDetails.ActiveLinkColor = palette.AccentHover;
         launchDetails.VisitedLinkColor = palette.Accent;
@@ -343,7 +404,10 @@ internal sealed class SettingsWindow : Form
         ApplyAppearanceSelection();
         ApplyActionColors();
         restart.ApplyTheme(palette);
+        startSilently.ApplyTheme(palette);
+        closeToTray.ApplyTheme(palette);
         startup.ApplyTheme(palette);
+        launchOnStartup.ApplyTheme(palette);
         palette.ApplyWindowFrame(this, integratedTitleBar: true);
         Invalidate(invalidateChildren: true);
     }
@@ -570,9 +634,8 @@ internal sealed class SettingsWindow : Form
         maximize.Margin = new Padding(0, 0, 4, 0);
         maximize.TabIndex = 1;
         buttons.Controls.Add(maximize, 1, 0);
-        var close = BuildCaptionButton(CaptionCommand.Close);
-        close.TabIndex = 2;
-        buttons.Controls.Add(close, 2, 0);
+        closeButton.TabIndex = 2;
+        buttons.Controls.Add(closeButton, 2, 0);
         header.Controls.Add(buttons, 3, 0);
 
         header.MouseDown += BeginWindowMove;
@@ -608,7 +671,7 @@ internal sealed class SettingsWindow : Form
         {
             CaptionCommand.Minimize => ("MinimizeWindow", "最小化窗口"),
             CaptionCommand.Maximize => ("MaximizeWindow", "最大化窗口"),
-            _ => ("CloseWindow", "关闭窗口并收进托盘"),
+            _ => ("CloseWindow", "关闭窗口"),
         };
         bool close = command == CaptionCommand.Close;
         var button = new Button
@@ -679,6 +742,13 @@ internal sealed class SettingsWindow : Form
                 WindowState = FormWindowState.Maximized;
         };
         return button;
+    }
+
+    private void UpdateCloseBehavior()
+    {
+        string label = CloseToTray ? "关闭窗口并收进托盘" : "退出启动器";
+        closeButton.AccessibleName = label;
+        captionToolTip.SetToolTip(closeButton, label);
     }
 
     private void UpdateMaximizeButton(Button maximize, Button resizeGrip)
@@ -890,14 +960,27 @@ internal sealed class SettingsWindow : Form
     {
         var section = Stack();
         section.Dock = DockStyle.Fill;
-        AddRow(section, TextLabel("启动器选项", sectionFont));
-        AddRow(section, BuildSwitchRow(restart, "可能中断 Codex 正在运行的任务"));
+        var importantHeading = TextLabel("重要选项", sectionFont);
+        importantHeading.Name = "ImportantOptionsHeading";
+        AddRow(section, importantHeading);
+        AddRow(section, BuildSwitchRow(restart, "可能中断正在进行的 Codex 任务。", BuildRestartHelpButton()));
+        AddRow(section, Divider(new Padding(0, 6, 0, 10)));
+        var launcherHeading = TextLabel("启动器选项", sectionFont);
+        launcherHeading.Name = "LauncherOptionsHeading";
+        AddRow(section, launcherHeading);
+        AddRow(section, BuildSwitchRow(startup, "登录 Windows 后自动运行启动器。"));
+        AddRow(section, BuildSwitchRow(startSilently, "登录自启时只显示托盘图标。"));
+        AddRow(section, BuildSwitchRow(launchOnStartup, "启动时使用已保存的代理。"));
+        startupWarning.Name = "StartupRegistrationWarning";
+        startupWarning.Margin = new Padding(0, 0, 0, 6);
+        startupWarning.Visible = false;
+        AddRow(section, startupWarning);
         AddRow(section, Divider(new Padding(0, 2, 0, 2)));
-        AddRow(section, BuildSwitchRow(startup, "登录 Windows 后在系统托盘运行"));
+        AddRow(section, BuildSwitchRow(closeToTray, "关闭窗口后，启动器留在托盘。"));
         return section;
     }
 
-    private TableLayoutPanel BuildSwitchRow(ToggleSwitch toggle, string description)
+    private TableLayoutPanel BuildSwitchRow(ToggleSwitch toggle, string description, Button? help = null)
     {
         toggle.AccessibleDescription = description;
         toggle.Anchor = AnchorStyles.Right;
@@ -906,11 +989,49 @@ internal sealed class SettingsWindow : Form
         row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         var copy = Stack();
         copy.Dock = DockStyle.Fill;
-        AddRow(copy, TextLabel(toggle.AccessibleName!));
-        AddRow(copy, CaptionLabel(description));
+        var title = TextLabel(toggle.AccessibleName!);
+        AddRow(copy, help is null ? title : InlineRow(title, help));
+        var note = help is null ? CaptionLabel(description) :
+            BindTheme(TextLabel(description, captionFont), static (label, palette) => label.ForeColor = palette.Warning);
+        AddRow(copy, note);
         row.Controls.Add(copy, 0, 0);
         row.Controls.Add(toggle, 1, 0);
         return row;
+    }
+
+    private Button BuildRestartHelpButton()
+    {
+        var help = new Button
+        {
+            Name = "RestartHelp",
+            AccessibleName = RestartHelpTitle,
+            AccessibleDescription = RestartHelpText,
+            Size = new Size(22, 22),
+            CausesValidation = false,
+        };
+        ConfigureButton(help);
+        help.Margin = new Padding(2, 0, 0, 0);
+        help.FlatAppearance.BorderSize = 0;
+        BindTheme(help, static (button, palette) =>
+        {
+            button.BackColor = palette.Background;
+            button.ForeColor = palette.Muted;
+            button.FlatAppearance.MouseOverBackColor = palette.SoftSurface;
+            button.FlatAppearance.MouseDownBackColor = palette.Selection;
+        });
+        help.Paint += (_, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            int diameter = Math.Min(help.Width, help.Height) * 2 / 3;
+            using var pen = new Pen(help.ForeColor, Math.Max(1f, diameter / 15f));
+            e.Graphics.DrawEllipse(pen, (help.Width - diameter) / 2, (help.Height - diameter) / 2, diameter, diameter);
+            TextRenderer.DrawText(e.Graphics, "?", captionFont, help.ClientRectangle, help.ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        };
+        restartToolTip.SetToolTip(help, RestartHelpText);
+        help.Click += (_, _) => restartToolTip.Show(RestartHelpText, help, new Point(0, help.Height), restartToolTip.AutoPopDelay);
+        help.Leave += (_, _) => restartToolTip.Hide(help);
+        return help;
     }
 
     private (TableLayoutPanel Panel, Action<bool> Arrange) BuildLaunchSection()
@@ -918,7 +1039,10 @@ internal sealed class SettingsWindow : Form
         var lastLaunch = Stack();
         lastLaunch.Dock = DockStyle.Fill;
         lastLaunch.Margin = new Padding(0, 0, 12, 0);
-        AddRow(lastLaunch, TextLabel("最近一次启动", sectionFont));
+        var title = TextLabel("最近一次启动", sectionFont);
+        title.Name = "LastLaunchHeading";
+        title.Margin = new Padding(0, 0, 8, 0);
+        AddRow(lastLaunch, InlineRow(title, launchTime));
         var result = WithStatusDot(launchStatus);
         result.Anchor = AnchorStyles.Left;
         result.Margin = new Padding(0, 3, 0, 0);
@@ -950,10 +1074,14 @@ internal sealed class SettingsWindow : Form
         var footer = Stack();
         footer.Dock = DockStyle.Fill;
         AddRow(footer, Divider(new Padding(0)));
-        var note = CaptionLabel("关闭窗口后，启动器继续在托盘运行。");
-        note.Margin = new Padding(22, 9, 6, 8);
+        var assembly = typeof(SettingsWindow).Assembly;
+        string version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version!.ToString(3);
+        var versionLabel = CaptionLabel("version " + version.Split('+')[0]);
+        versionLabel.Name = "LauncherVersion";
+        versionLabel.Margin = new Padding(22, 9, 6, 8);
         var grip = BuildResizeGrip();
-        AddRow(footer, SplitRow(note, grip));
+        AddRow(footer, SplitRow(versionLabel, grip));
         grip.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
         return (footer, grip);
     }
@@ -1074,6 +1202,7 @@ internal sealed class SettingsWindow : Form
     private void ApplyActionColors()
     {
         ApplyButtonColors(launchButton, theme, primary: true);
+        launchButton.ApplyTheme(theme);
         ApplyButtonColors(testButton, theme, primary: false);
     }
 
@@ -1144,6 +1273,18 @@ internal sealed class SettingsWindow : Form
         return row;
     }
 
+    private static FlowLayoutPanel InlineRow(Control first, Control second)
+    {
+        var row = new FlowLayoutPanel
+        {
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, Margin = new Padding(0),
+        };
+        first.Anchor = second.Anchor = AnchorStyles.Left;
+        row.Controls.Add(first);
+        row.Controls.Add(second);
+        return row;
+    }
+
     private Label CaptionLabel(string text) =>
         BindTheme(TextLabel(text, captionFont), static (label, palette) => label.ForeColor = palette.Muted);
 
@@ -1175,6 +1316,7 @@ internal sealed class SettingsWindow : Form
         if (disposing)
         {
             captionToolTip.Dispose();
+            restartToolTip.Dispose();
             appMark?.Dispose();
             bodyFont.Dispose();
             titleFont.Dispose();
@@ -1246,6 +1388,7 @@ internal sealed class SettingsWindow : Form
 
     private sealed class ToggleSwitch : CheckBox
     {
+        private readonly ControlTransition slide;
         private LauncherTheme theme = LauncherTheme.Light;
 
         public ToggleSwitch()
@@ -1255,13 +1398,17 @@ internal sealed class SettingsWindow : Form
             Margin = new Padding(0);
             AccessibleRole = AccessibleRole.CheckButton;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            CheckedChanged += (_, _) => Invalidate();
+            slide = new ControlTransition(this);
+            CheckedChanged += (_, _) => slide.MoveTo(Checked ? 1f : 0f, animate: !theme.IsHighContrast);
         }
 
         internal void ApplyTheme(LauncherTheme palette)
         {
             theme = palette;
-            Invalidate();
+            if (theme.IsHighContrast)
+                slide.MoveTo(Checked ? 1f : 0f, animate: false);
+            else
+                Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -1277,25 +1424,32 @@ internal sealed class SettingsWindow : Form
             if (height <= 0 || width < height)
                 return;
 
-            bool active = Enabled && Checked;
-            Color track = active ? theme.Accent : theme.SwitchOff;
+            float accent = Enabled ? slide.Position : 0f;
+            Color track = ControlTransition.Blend(theme.SwitchOff, theme.Accent, accent);
             using var trackBrush = new SolidBrush(track);
-            using var knobBrush = new SolidBrush(active ? theme.OnAccent : theme.SwitchThumb);
+            using var knobBrush = new SolidBrush(ControlTransition.Blend(theme.SwitchThumb, theme.OnAccent, accent));
             using var capsule = new GraphicsPath();
             capsule.AddArc(inset, inset, height, height, 90, 180);
             capsule.AddArc(inset + width - height, inset, height, height, 270, 180);
             capsule.CloseFigure();
             e.Graphics.FillPath(trackBrush, capsule);
-            if (!active)
+            if (accent < 1f)
             {
-                using var border = new Pen(theme.SwitchOffBorder);
+                using var border = new Pen(ControlTransition.Blend(theme.SwitchOffBorder, theme.Accent, accent));
                 e.Graphics.DrawPath(border, capsule);
             }
             int padding = LogicalToDeviceUnits(3);
-            int knobLeft = inset + padding + (Checked ? width - height : 0);
+            float knobLeft = inset + padding + (width - height) * slide.Position;
             e.Graphics.FillEllipse(knobBrush, knobLeft, inset + padding, height - 2 * padding, height - 2 * padding);
             if (Focused && ShowFocusCues)
                 ControlPaint.DrawFocusRectangle(e.Graphics, ClientRectangle, theme.Focus, BackColor);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+                slide.Dispose();
         }
     }
 }

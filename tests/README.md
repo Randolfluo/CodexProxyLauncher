@@ -4,7 +4,7 @@
 
 在 Windows 上用 PowerShell 7 从项目根目录运行 `.\scripts\verify-release.ps1`。加上 `-Tag v0.1.0` 可以同时校验发布标签。脚本构建 .NET Framework 4.8 轻量版和 .NET 10 自包含版。
 
-`release-package.ps1` 检查轻量版的中间 ZIP。`release-assets.ps1` 验证发布目录中的两个 EXE、各自的 SHA-256 校验文件和内嵌许可内容。兼容性测试使用两个最终 EXE，界面和代理冒烟测试使用轻量版。所有测试通过后，脚本输出发布文件目录。[构建脚本说明](../scripts/README.md#cicd)
+`release-package.ps1` 检查轻量版的中间 ZIP。`release-assets.ps1` 验证发布目录中的两个 EXE、各自的 SHA-256 校验文件和内嵌许可内容。兼容性测试使用两个最终 EXE，`StartupBehavior` 验证两个版本的启动和退出行为，界面和代理冒烟测试使用轻量版。所有测试通过后，脚本输出发布文件目录。[构建脚本说明](../scripts/README.md#cicd)
 
 ## 轻量包
 
@@ -27,7 +27,7 @@ powershell.exe -NoProfile -STA -File .\tests\lightweight-smoke.ps1 -Executable $
 .\tests\tray-menu.ps1 -AssemblyPath .\src\CodexProxyLauncher\bin\Release\net10.0-windows\CodexProxyLauncher.dll
 ```
 
-测试使用临时配置和进程替身。实际 Codex 启动和重启、登录自启及跨屏 DPI 需要在目标设备验证。
+`StartupBehavior` 使用临时设置、临时注册表键和 Codex 启动替身，检查旧配置、登录登记修复、手动打开与登录自启、重复启动及托盘退出。窗口测试覆盖版本号、启动时间、重要选项的问号说明和控件动效。实际 Windows 登录验证在独立的测试会话运行。开启两项自启后重新登录，确认启动器和 Codex 依次启动，再按静默开关的状态核对窗口或托盘。实际 Codex 启动和重启及跨屏 DPI 也需在目标设备验证。
 
 ## 文档链接
 

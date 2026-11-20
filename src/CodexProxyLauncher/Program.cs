@@ -60,11 +60,9 @@ internal static class Program
 #else
         ApplicationConfiguration.Initialize();
 #endif
-        bool startInTray = args.Length == 1 &&
-            args[0].Equals(LauncherOptions.TrayArgument, StringComparison.OrdinalIgnoreCase);
-        if (args.Length == 0 || startInTray)
+        if (LauncherOptions.GetDesktopMode(args) is DesktopLaunchMode mode)
         {
-            TrayApplication.Run(startInTray);
+            TrayApplication.Run(mode);
             return 0;
         }
 

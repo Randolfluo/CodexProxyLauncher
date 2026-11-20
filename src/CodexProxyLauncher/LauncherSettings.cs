@@ -22,10 +22,14 @@ internal enum AppearanceMode
 
 internal sealed record LauncherSettings(string Host, int Port, bool RestartRunning)
 {
+    internal const bool DefaultCloseToTray = true;
     private static readonly Uri DefaultProxy = new(LauncherOptions.DefaultProxy);
     public static LauncherSettings Default { get; } = new(DefaultProxy.Host, DefaultProxy.Port, false);
 
     public AppearanceMode Appearance { get; init; }
+    public bool StartSilently { get; init; }
+    public bool CloseToTray { get; init; } = DefaultCloseToTray;
+    public bool LaunchCodexOnStartup { get; init; }
 
     public static bool IsValidHost(string? host) =>
         host is { Length: > 0 and <= 255 } && Uri.CheckHostName(host) != UriHostNameType.Unknown;
@@ -95,6 +99,9 @@ internal sealed class LauncherSettingsStore(string path)
         return new LauncherSettings(document.Host!, document.Port, document.RestartRunning)
         {
             Appearance = appearance,
+            StartSilently = document.StartSilently,
+            CloseToTray = document.CloseToTray ?? LauncherSettings.DefaultCloseToTray,
+            LaunchCodexOnStartup = document.LaunchCodexOnStartup,
         };
     }
 
@@ -108,6 +115,9 @@ internal sealed class LauncherSettingsStore(string path)
             Port = settings.Port,
             RestartRunning = settings.RestartRunning,
             Appearance = settings.Appearance.ToString(),
+            StartSilently = settings.StartSilently,
+            CloseToTray = settings.CloseToTray,
+            LaunchCodexOnStartup = settings.LaunchCodexOnStartup,
         });
     }
 
@@ -118,6 +128,9 @@ internal sealed class LauncherSettingsStore(string path)
         [DataMember] public int Port { get; set; }
         [DataMember] public bool RestartRunning { get; set; }
         [DataMember] public string? Appearance { get; set; }
+        [DataMember] public bool StartSilently { get; set; }
+        [DataMember] public bool? CloseToTray { get; set; }
+        [DataMember] public bool LaunchCodexOnStartup { get; set; }
     }
 #else
     private LauncherSettings? ReadSettings() =>

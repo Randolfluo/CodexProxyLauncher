@@ -45,6 +45,23 @@ foreach ($executable in $lightweight, $full) {
     & (Join-Path $testDirectory 'compatibility.ps1') -Executable $executable | Out-Host
 }
 
+$dotnet = Join-Path $projectRoot '.tools\dotnet\dotnet.exe'
+if (-not (Test-Path -LiteralPath $dotnet)) { $dotnet = (Get-Command dotnet).Source }
+$startupProject = Join-Path $testDirectory 'StartupBehavior\StartupBehavior.csproj'
+$startupTargets = @(
+    @{ Framework = 'net48'; Assembly = (Join-Path $extractedDirectory 'CodexProxyLauncher.exe') }
+    @{ Framework = 'net10.0-windows'; Assembly = $fullAssembly }
+)
+foreach ($target in $startupTargets) {
+    $framework = $target.Framework
+    $testOutput = Join-Path $verificationDirectory ('startup-' + $framework)
+    & $dotnet build $startupProject --framework $framework --configuration Release --output $testOutput --nologo `
+        "-p:TargetFrameworks=$framework" "-p:LauncherAssembly=$($target.Assembly)" | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Startup behavior test build failed for $framework." }
+    & (Join-Path $testOutput 'CodexProxyLauncher.StartupTests.exe') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Startup behavior tests failed for $framework." }
+}
+
 $windowsPowerShell = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell\v1.0\powershell.exe'
 $smokeTest = Join-Path $testDirectory 'lightweight-smoke.ps1'
 & $windowsPowerShell -NoProfile -NonInteractive -ExecutionPolicy Bypass -STA -File $smokeTest -Executable $lightweight -CheckProxy | Out-Host

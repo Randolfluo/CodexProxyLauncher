@@ -29,5 +29,6 @@
   <ItemGroup>
     <EmbeddedResource Include="$(ApplicationIcon)" LogicalName="CodexProxyLauncher.App.ico" />
     <EmbeddedResource Include="Launcher.ps1" LogicalName="Launcher.ps1" />
+    <InternalsVisibleTo Include="CodexProxyLauncher.StartupTests" />
   </ItemGroup>
 </Project>

@@ -10,8 +10,9 @@ internal sealed class TrayApplication : ApplicationContext
     private readonly SettingsWindow window;
     private readonly TrayQuickMenu menu = new();
     private readonly NotifyIcon tray;
-    private readonly LauncherSettingsStore store = new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexProxyLauncher", "settings.json"));
+    private readonly LauncherSettingsStore store;
+    private readonly StartupRegistration startupRegistration;
+    private readonly Func<LauncherOptions, Task<LaunchResult>> launch;
     private readonly System.Windows.Forms.Timer saveTimer = new() { Interval = 500 };
     private LauncherSettings savedSettings;
     private LauncherSettings? draftSettings;
@@ -19,36 +20,32 @@ internal sealed class TrayApplication : ApplicationContext
     private Uri? proxy;
     private CancellationTokenSource? proxyCheck;
     private bool launching;
-    private bool settingStartup;
     private bool exiting;
     private bool disposed;
 
-    private TrayApplication()
+    internal TrayApplication(LauncherSettingsStore store, StartupRegistration startupRegistration,
+        Func<LauncherOptions, Task<LaunchResult>> launch)
     {
+        this.store = store;
+        this.startupRegistration = startupRegistration;
+        this.launch = launch;
         savedSettings = store.Load(out string? warning);
         window = new SettingsWindow(savedSettings, icon);
         window.SetSettingsWarning(warning);
-        try
-        {
-            window.RunAtSignIn = StartupRegistration.IsEnabled();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-        {
-            window.DisableStartupSwitch();
-            window.SetSettingsWarning("无法读取 Windows 登录启动设置。");
-        }
 
         window.FormClosing += OnWindowClosing;
+        window.FormClosed += (_, _) => ExitThread();
         window.SettingsEdited += (_, _) => ReadSettings();
         window.AppearanceChanged += (_, _) =>
         {
             RefreshAppearance();
             ReadSettings();
         };
-        window.StartupChanged += (_, _) => ChangeStartup();
-        window.LaunchRequested += async (_, _) => await LaunchAsync();
+        window.StartupChanged += (_, _) => UpdateStartupRegistration(
+            () => startupRegistration.SetEnabled(window.RunAtSignIn), "无法更新 Windows 登录启动项。");
+        window.LaunchRequested += async (_, _) => await LaunchFromSettingsAsync();
         window.TestRequested += async (_, _) => await CheckProxyAsync();
-        menu.LaunchItem.Click += async (_, _) => await LaunchAsync();
+        menu.LaunchItem.Click += async (_, _) => await LaunchFromSettingsAsync();
         menu.SettingsItem.Click += (_, _) => OpenSettings();
         menu.ExitItem.Click += (_, _) => ExitThread();
         menu.Opening += (_, _) => RefreshAppearance();
@@ -65,10 +62,16 @@ internal sealed class TrayApplication : ApplicationContext
         };
     }
 
-    public static void Run(bool startInTray)
+    public static void Run(DesktopLaunchMode mode) => Run(mode, "", () => new TrayApplication(
+        new LauncherSettingsStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CodexProxyLauncher", "settings.json")),
+        StartupRegistration.ForCurrentUser(), options => Task.Run(() => PowerShellLauncher.Execute(options))));
+
+    internal static void Run(DesktopLaunchMode mode, string instanceSuffix, Func<TrayApplication> createApplication)
     {
-        using var activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\CodexProxyLauncher.ShowSettings");
-        using var instance = new Mutex(false, @"Local\CodexProxyLauncher.Tray");
+        using var activation = new EventWaitHandle(false, EventResetMode.AutoReset,
+            @"Local\CodexProxyLauncher.ShowSettings" + instanceSuffix);
+        using var instance = new Mutex(false, @"Local\CodexProxyLauncher.Tray" + instanceSuffix);
         bool ownsInstance;
         try
         {
@@ -80,14 +83,18 @@ internal sealed class TrayApplication : ApplicationContext
         }
         if (!ownsInstance)
         {
-            if (!startInTray)
+            if (mode == DesktopLaunchMode.Interactive)
                 activation.Set();
             return;
         }
 
         try
         {
-            using var app = new TrayApplication();
+            using var app = createApplication();
+            app.UpdateStartupRegistration(mode == DesktopLaunchMode.Interactive
+                ? app.startupRegistration.RepairForManualStart : app.startupRegistration.Read,
+                "无法读取或修复 Windows 登录启动项。");
+            LauncherSettings startupSettings = app.savedSettings;
             using var dispatcher = new WindowsFormsSynchronizationContext();
             void PostToUi(Action action)
             {
@@ -120,8 +127,14 @@ internal sealed class TrayApplication : ApplicationContext
                 {
                     // Opening settings or the tray menu still refreshes the Windows preference.
                 }
-                if (!startInTray)
+                bool signingIn = mode == DesktopLaunchMode.SignIn;
+                if (mode == DesktopLaunchMode.Interactive || (signingIn && !startupSettings.StartSilently))
                     app.OpenSettings();
+                if (signingIn && startupSettings.LaunchCodexOnStartup)
+                {
+                    var options = LauncherOptions.ForDesktop(startupSettings.CreateProxy(), startupSettings.RestartRunning);
+                    PostToUi(async () => await app.LaunchAsync(options, revealFailure: false));
+                }
                 Application.Run(app);
             }
             finally
@@ -160,7 +173,7 @@ internal sealed class TrayApplication : ApplicationContext
     private void OnWindowClosing(object? sender, FormClosingEventArgs e)
     {
         SaveSettings();
-        if (e.CloseReason == CloseReason.UserClosing && !exiting)
+        if (e.CloseReason == CloseReason.UserClosing && !exiting && window.CloseToTray)
         {
             e.Cancel = true;
             window.Hide();
@@ -189,7 +202,7 @@ internal sealed class TrayApplication : ApplicationContext
         UpdateActions();
     }
 
-    private LauncherSettings PendingSettings => draftSettings ?? (savedSettings with { Appearance = window.Appearance });
+    private LauncherSettings PendingSettings => draftSettings ?? window.ReadPreferences(savedSettings);
 
     private void SaveSettings()
     {
@@ -212,23 +225,33 @@ internal sealed class TrayApplication : ApplicationContext
         }
     }
 
-    private void ChangeStartup()
+    private void UpdateStartupRegistration(Func<StartupEntry> update, string failureMessage)
     {
-        if (settingStartup)
-            return;
-        bool enabled = window.RunAtSignIn;
+        string? warning = null;
+        StartupEntry? entry = null;
         try
         {
-            StartupRegistration.SetEnabled(enabled);
+            entry = update();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        catch (Exception ex) when (IsStartupError(ex))
         {
-            settingStartup = true;
-            window.RunAtSignIn = !enabled;
-            settingStartup = false;
-            window.ShowWarning("无法更新 Windows 登录启动设置。\n\n" + ex.Message);
+            warning = failureMessage + "\n" + ex.Message;
+            try { entry = startupRegistration.Read(); }
+            catch (Exception readError) when (IsStartupError(readError)) { }
         }
+
+        warning ??= entry switch
+        {
+            { State: StartupState.InvalidCommand } => "Windows 登录启动项无效，开启开关可重新登记。",
+            { State: StartupState.MissingExecutable } => "Windows 登录启动文件已不存在。\n" + entry.Executable,
+            { State: StartupState.Registered } when !startupRegistration.IsCurrentExecutable(entry) =>
+                "登录时将运行另一位置的启动器。关闭后重新开启可切换到此版本。\n" + entry.Executable,
+            _ => null,
+        };
+        window.SetStartupState(entry?.State == StartupState.Registered, entry is not null, warning);
     }
+
+    private static bool IsStartupError(Exception ex) => ex is IOException or UnauthorizedAccessException or SecurityException;
 
     private void UpdateActions()
     {
@@ -269,18 +292,26 @@ internal sealed class TrayApplication : ApplicationContext
         }
     }
 
-    private async Task LaunchAsync()
+    private Task LaunchFromSettingsAsync()
     {
         if (proxy is null || draftSettings is null || launching)
-            return;
+            return Task.CompletedTask;
         SaveSettings();
-        LauncherOptions options = LauncherOptions.ForDesktop(proxy, draftSettings.RestartRunning);
+        return LaunchAsync(LauncherOptions.ForDesktop(proxy, draftSettings.RestartRunning), revealFailure: true);
+    }
+
+    private async Task LaunchAsync(LauncherOptions options, bool revealFailure)
+    {
+        if (launching || exiting || disposed)
+            return;
         launching = true;
-        window.SetLaunchStatus("正在启动…", kind: StatusKind.Working);
+        window.SetLaunchStatus("正在启动…", kind: StatusKind.Working, requestedAt: DateTimeOffset.Now);
         UpdateActions();
         try
         {
-            LaunchResult result = await Task.Run(() => PowerShellLauncher.Execute(options));
+            LaunchResult result = await launch(options);
+            if (exiting || disposed)
+                return;
             switch (result.ExitCode)
             {
                 case 0:
@@ -296,23 +327,30 @@ internal sealed class TrayApplication : ApplicationContext
                     window.SetLaunchStatus("启动失败", result.FailureDetail, StatusKind.Error);
                     break;
             }
-            if (result.ExitCode != 0)
+            if (revealFailure && result.ExitCode != 0)
                 OpenSettings();
         }
         catch (Exception ex)
         {
-            window.SetLaunchStatus("启动失败", ex.Message, StatusKind.Error);
-            OpenSettings();
+            if (!exiting && !disposed)
+            {
+                window.SetLaunchStatus("启动失败", ex.Message, StatusKind.Error);
+                if (revealFailure)
+                    OpenSettings();
+            }
         }
         finally
         {
             launching = false;
-            UpdateActions();
+            if (!exiting && !disposed)
+                UpdateActions();
         }
     }
 
     protected override void ExitThreadCore()
     {
+        if (exiting)
+            return;
         exiting = true;
         SaveSettings();
         CancelProxyCheck();
