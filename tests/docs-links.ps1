@@ -4,6 +4,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$projectReadme = Join-Path $projectRoot 'README.md'
+$releaseLink = '<a href="https://github.com/Randolfluo/CodexProxyLauncher/releases">'
 $documentRoots = @(
     $projectRoot
     (Join-Path $projectRoot 'scripts')
@@ -16,6 +18,13 @@ $referencePattern = '<(?:a\b[^>]*?\shref|(?<image>img)\b[^>]*?\ssrc)="(?<url>[^"
 $documents = Get-ChildItem -LiteralPath $documentRoots -File -Filter '*.md'
 foreach ($document in $documents) {
     $html = (ConvertFrom-Markdown -LiteralPath $document.FullName).Html
+    if ($document.FullName -eq $projectReadme) {
+        $intro = ($html -split '<h2\b', 2)[0]
+        if (-not $intro.Contains($releaseLink)) {
+            throw 'The project README introduction must link to GitHub Releases.'
+        }
+    }
+
     foreach ($match in [regex]::Matches($html, $referencePattern)) {
         $url = [Net.WebUtility]::HtmlDecode($match.Groups['url'].Value)
         if ($url -match '^(#|//|[a-zA-Z][a-zA-Z0-9+.-]*:)') { continue }
@@ -28,4 +37,4 @@ foreach ($document in $documents) {
         $linkCount++
     }
 }
-Write-Output "PASS: $linkCount local Markdown links and images."
+Write-Output "PASS: README download link and $linkCount local Markdown links and images."

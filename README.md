@@ -1,6 +1,10 @@
 # CodexProxyLauncher
 
-为 Windows 11 x64 上的 Codex Desktop 指定 HTTP 代理的社区启动器。
+Windows 11 x64 上的 Codex Desktop HTTP 代理启动器。可从设置窗口、PowerShell 或 Windows 快捷方式启动 Codex 桌面版。
+
+HTTP proxy launcher for Codex Desktop on Windows 11 x64.
+
+[下载 Windows 版 · Download for Windows](https://github.com/Randolfluo/CodexProxyLauncher/releases)
 
 ![Codex Proxy Launcher 设置界面](docs/images/settings.png)
 
@@ -13,9 +17,9 @@
 | 轻量版 | `CodexProxyLauncher-<version>-win-x64-net48.exe` | 21H2 自带 .NET Framework 4.8，22H2 及更新版自带 4.8.1，均满足轻量版要求。[微软说明](https://learn.microsoft.com/zh-cn/dotnet/framework/get-started/system-requirements#client-operating-systems) |
 | 完整版 | `CodexProxyLauncher-<version>-win-x64-net10.exe` | 内置 .NET 10 桌面运行时。[Windows 版本要求](https://learn.microsoft.com/zh-cn/dotnet/core/install/windows#supported-versions) |
 
-下载对应的 EXE，放在固定目录后双击打开。EXE 未签名，可用 `Get-FileHash -Algorithm SHA256` 计算哈希，与对应的 `.exe.sha256` 文件核对。[GitHub Releases](https://github.com/Randolfluo/CodexProxyLauncher/releases)
+将下载的 EXE 放在固定目录后双击打开。EXE 未签名，可用 `Get-FileHash -Algorithm SHA256` 计算哈希，与对应的 `.exe.sha256` 文件核对。
 
-## 使用
+## 配置 Codex Desktop 的 HTTP 代理
 
 填写代理主机和端口，默认地址为 `http://127.0.0.1:7897`。有效设置会自动保存。点击「检测代理」可检查 TCP 端口和经代理访问 `api.openai.com` 的结果。点击「使用代理启动 Codex」后，界面会显示 Windows 是否接受启动请求。
 
