@@ -36,9 +36,9 @@ internal sealed class SettingsWindow : Form
     private const string RestartHelpTitle = "为什么要清理旧进程？";
     private const string RestartHelpText =
         "启动器会在启动 Codex 时传入当前代理设置。\r\n" +
-        "如果 Codex 已在运行，需要先退出旧实例，再启动才能用上这次的代理。\r\n\r\n" +
+        "如果 Codex 已在运行，需要先退出旧实例，再启动才能用上这次的代理。\r\n" +
         "开启后，启动器会先结束旧实例，再发起新的启动请求。\r\n" +
-        "旧实例里正在运行的任务可能中断。\r\n\r\n" +
+        "旧实例里正在运行的任务可能中断。\r\n" +
         "关闭时，若检测到旧实例，「最近一次启动」会提示你先退出 Codex，再重试。";
     private static readonly IntPtr SkipNonClientPaint = new(-1);
 
@@ -51,7 +51,7 @@ internal sealed class SettingsWindow : Form
     private readonly Font captionFont = new("Microsoft YaHei UI", 8.5f);
     private Font addressFont = new("Consolas", AddressFontSizeInPoints);
     private readonly ToolTip captionToolTip = new();
-    private readonly ToolTip restartToolTip = new() { ToolTipTitle = RestartHelpTitle, InitialDelay = 300, AutoPopDelay = 20000 };
+    private readonly HelpPopup restartHelpPopup = new(RestartHelpTitle, RestartHelpText);
     private Bitmap? appMark;
     private readonly List<Action<LauncherTheme>> themeBindings = [];
     private readonly Dictionary<Label, StatusKind> statusKinds = [];
@@ -183,7 +183,14 @@ internal sealed class SettingsWindow : Form
 
         ClientSizeChanged += (_, _) => Reflow();
         PaddingChanged += (_, _) => Reflow();
-        Resize += (_, _) => UpdateMaximizeButton(maximize, resizeGrip);
+        Resize += (_, _) =>
+        {
+            UpdateMaximizeButton(maximize, resizeGrip);
+            restartHelpPopup.Hide();
+        };
+        LocationChanged += (_, _) => restartHelpPopup.Hide();
+        Deactivate += (_, _) => restartHelpPopup.Hide();
+        viewport.Scroll += (_, _) => restartHelpPopup.Hide();
         DpiChanged += (_, _) => BeginInvoke((Action)(() =>
         {
 #if NETFRAMEWORK
@@ -388,6 +395,7 @@ internal sealed class SettingsWindow : Form
     internal void ApplyTheme(LauncherTheme palette)
     {
         theme = palette;
+        restartHelpPopup.ApplyTheme(palette);
         BackColor = palette.Background;
         ForeColor = palette.Ink;
         validation.ForeColor = palette.Error;
@@ -1028,9 +1036,11 @@ internal sealed class SettingsWindow : Form
             TextRenderer.DrawText(e.Graphics, "?", captionFont, help.ClientRectangle, help.ForeColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         };
-        restartToolTip.SetToolTip(help, RestartHelpText);
-        help.Click += (_, _) => restartToolTip.Show(RestartHelpText, help, new Point(0, help.Height), restartToolTip.AutoPopDelay);
-        help.Leave += (_, _) => restartToolTip.Hide(help);
+        help.MouseHover += (_, _) => restartHelpPopup.ShowFor(help);
+        help.Click += (_, _) => restartHelpPopup.ShowFor(help);
+        help.MouseLeave += (_, _) => restartHelpPopup.Hide();
+        help.Leave += (_, _) => restartHelpPopup.Hide();
+        help.VisibleChanged += (_, _) => restartHelpPopup.Hide();
         return help;
     }
 
@@ -1316,7 +1326,7 @@ internal sealed class SettingsWindow : Form
         if (disposing)
         {
             captionToolTip.Dispose();
-            restartToolTip.Dispose();
+            restartHelpPopup.Dispose();
             appMark?.Dispose();
             bodyFont.Dispose();
             titleFont.Dispose();

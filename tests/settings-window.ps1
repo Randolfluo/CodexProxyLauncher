@@ -30,6 +30,9 @@ public static class SettingsWindowNative
     [DllImport("user32.dll")]
     public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
 
+    [DllImport("user32.dll")]
+    public static extern int GetDpiForWindow(IntPtr window);
+
     [DllImport("dwmapi.dll")]
     public static extern int DwmFlush();
 
@@ -114,6 +117,17 @@ try {
         throw 'The proxy fields did not return to their original layout after expanding the window.'
     }
     [Windows.Forms.Application]::DoEvents()
+
+    $help = $window.Controls.Find('RestartHelp', $true)[0]
+    $help.PerformClick()
+    $helpPopup = $window.OwnedForms | Where-Object AccessibleRole -eq ToolTip
+    $helpDpi = [SettingsWindowNative]::GetDpiForWindow($help.Handle)
+    # The title and five body lines use 12 logical pixels of text and 16 pixels of total vertical padding.
+    $minimumHeight = (6 * 12 + 16) * $helpDpi / 96
+    if (-not $helpPopup.Visible -or $helpPopup.Height -lt $minimumHeight -or -not $area.Contains($helpPopup.Bounds)) {
+        throw 'The restart help must scale with the settings window DPI and fit the working area.'
+    }
+    $helpPopup.Hide()
 
     $edgeY = $window.Top + [int]($window.Height / 2)
     $edge = [IntPtr](($edgeY -shl 16) -bor (($window.Left + 2) -band 0xffff))

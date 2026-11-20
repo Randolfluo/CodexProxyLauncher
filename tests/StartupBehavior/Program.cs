@@ -263,12 +263,34 @@ internal static class Program
                     "The sign-in options must use the reviewed wording.");
 
                 Button help = Control<Button>(window, "RestartHelp");
-                var tooltip = (ToolTip)typeof(SettingsWindow).GetField("restartToolTip", privateInstance)!.GetValue(window)!;
-                string helpText = tooltip.GetToolTip(help) ?? "";
+                string helpText = help.AccessibleDescription ?? "";
                 Require(help.Parent!.Controls[0].Text == restart.AccessibleName && help.Left >= help.Parent.Controls[0].Right &&
-                    helpText == help.AccessibleDescription && helpText.Contains("传入当前代理设置") &&
+                    helpText.Contains("传入当前代理设置") &&
                     helpText.Contains("旧实例里正在运行的任务可能中断"),
                     "The help button must sit directly next to the restart label and explain its effect and risk.");
+                Require(helpText.Split('\n').All(line => !string.IsNullOrWhiteSpace(line)),
+                    "The help text must have no blank lines.");
+
+                Form? activeForm = Form.ActiveForm;
+                window.ApplyTheme(LauncherTheme.Dark);
+                help.GetType().GetMethod("OnMouseHover", privateInstance)!.Invoke(help, [EventArgs.Empty]);
+                HelpPopup popup = window.OwnedForms.OfType<HelpPopup>().Single();
+                Require(popup.Visible && Form.ActiveForm == activeForm && !popup.ShowInTaskbar &&
+                    popup.Text == help.AccessibleName && popup.AccessibleDescription == helpText,
+                    "Hovering must show the help popup with its full text without moving focus.");
+                Require(popup.BackColor == LauncherTheme.Dark.Surface && popup.ForeColor == LauncherTheme.Dark.Ink,
+                    "The help popup must follow the window theme.");
+                Require(popup.Region is Region outline && !outline.IsVisible(0, 0) &&
+                    !outline.IsVisible(popup.Width - 1, popup.Height - 1) &&
+                    outline.IsVisible(popup.Width / 2, popup.Height / 2),
+                    "The help popup must clip its window to rounded corners.");
+
+                help.GetType().GetMethod("OnMouseLeave", privateInstance)!.Invoke(help, [EventArgs.Empty]);
+                Require(!popup.Visible, "Moving off the help button must dismiss the popup.");
+                help.PerformClick();
+                Require(popup.Visible && Form.ActiveForm == activeForm, "Clicking must reopen the help without moving focus.");
+                help.GetType().GetMethod("OnLeave", privateInstance)!.Invoke(help, [EventArgs.Empty]);
+                Require(!popup.Visible, "Leaving the help button by keyboard must dismiss the popup.");
 
                 Label heading = Control<Label>(window, "LastLaunchHeading");
                 Label time = Control<Label>(window, "LaunchTime");
