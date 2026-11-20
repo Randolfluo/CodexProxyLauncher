@@ -2,9 +2,9 @@
 
 ## 完整发布验证
 
-在 Windows 上用 PowerShell 7 从项目根目录运行 `.\scripts\verify-release.ps1`。加上 `-Tag v0.1.0` 可以同时校验发布标签。脚本编译 .NET 10 目标，再打包并验证 .NET Framework 4.8 轻量 ZIP。
+在 Windows 上用 PowerShell 7 从项目根目录运行 `.\scripts\verify-release.ps1`。加上 `-Tag v0.1.0` 可以同时校验发布标签。脚本构建 .NET Framework 4.8 轻量版和 .NET 10 自包含版。
 
-`release-package.ps1` 检查 ZIP 的文件名、标签版本和归档内容。兼容性和冒烟测试使用本次从 ZIP 解压出的 EXE。测试结束后，脚本输出通过验证的 ZIP 路径。[构建脚本说明](../scripts/README.md#cicd)
+`release-package.ps1` 检查轻量版的中间 ZIP。`release-assets.ps1` 验证最终发布目录的文件清单、SHA-256 和内嵌许可内容。兼容性测试使用两个最终 EXE，界面和代理冒烟测试使用轻量版。所有测试通过后，脚本输出发布文件目录。[构建脚本说明](../scripts/README.md#cicd)
 
 ## 轻量包
 

@@ -1,0 +1,21 @@
+<Project>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\..\LICENSE" LogicalName="CodexProxyLauncher.LICENSE" />
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\..\THIRD_PARTY_NOTICES.md" LogicalName="CodexProxyLauncher.THIRD_PARTY_NOTICES.md" />
+  </ItemGroup>
+
+  <Target Name="EmbedSelfContainedRuntimeNotices" AfterTargets="ResolveRuntimePackAssets"
+          Condition="'$(SelfContained)' == 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <_CoreRuntimePack Include="@(ResolvedRuntimePack)" Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
+      <_DesktopRuntimePack Include="@(ResolvedRuntimePack)" Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.WindowsDesktop.App'" />
+    </ItemGroup>
+    <Error Condition="'@(_CoreRuntimePack)' == '' Or '@(_DesktopRuntimePack)' == ''"
+           Text="Could not locate the runtime packs for the self-contained license notices." />
+    <ItemGroup>
+      <EmbeddedResource Include="@(_CoreRuntimePack->'%(PackageDirectory)\LICENSE.TXT')" LogicalName="CodexProxyLauncher.Runtime.NET.LICENSE.TXT" />
+      <EmbeddedResource Include="@(_CoreRuntimePack->'%(PackageDirectory)\THIRD-PARTY-NOTICES.TXT')" LogicalName="CodexProxyLauncher.Runtime.NET.THIRD-PARTY-NOTICES.TXT" />
+      <EmbeddedResource Include="@(_DesktopRuntimePack->'%(PackageDirectory)\LICENSE')" LogicalName="CodexProxyLauncher.Runtime.WindowsDesktop.LICENSE" />
+    </ItemGroup>
+  </Target>
+</Project>

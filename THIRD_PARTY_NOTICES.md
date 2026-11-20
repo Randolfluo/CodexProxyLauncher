@@ -13,4 +13,6 @@
 
 ## 构建依赖
 
-轻量版使用微软的 [Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3](https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net48/1.0.3) 编译。轻量 ZIP 随附 MIT 许可和本声明，运行时由 Windows 提供。
+轻量版使用微软的 [Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3](https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net48/1.0.3) 编译，运行时由 Windows 提供。
+
+两个 EXE 都内嵌项目的 MIT 许可和本声明。自包含版另外内嵌所用 .NET 运行时包和 Windows Desktop 运行时包中的许可文件，以及 .NET 运行时的第三方声明。

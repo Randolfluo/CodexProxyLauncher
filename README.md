@@ -4,11 +4,14 @@ Windows 桌面代理启动器，可为 Codex Desktop 指定 HTTP 代理，并按
 
 ## 安装
 
-轻量版面向 Windows 11 x64，使用系统自带的 .NET Framework 4.8 或 4.8.1 和 Windows PowerShell。请先安装 Codex Desktop，并准备可用的 HTTP 代理。[Windows 运行时说明](https://learn.microsoft.com/zh-cn/dotnet/framework/install/on-windows-and-server#windows-11)
+两个版本均面向 Windows 11 x64，并使用 Windows PowerShell。请先安装 Codex Desktop，并准备可用的 HTTP 代理。[Windows 运行时说明](https://learn.microsoft.com/zh-cn/dotnet/framework/install/on-windows-and-server#windows-11)
 
-1. 从 GitHub Release 下载 `CodexProxyLauncher-<version>-win-x64.zip`，或按下方步骤从源码构建。
-2. 将整个 ZIP 解压到固定目录。轻量版的 DPI 配置已内嵌在 `CodexProxyLauncher.exe` 中。
-3. 双击 `CodexProxyLauncher.exe` 打开设置。当前 EXE 未签名。
+| GitHub Release 下载 | 运行时 |
+| --- | --- |
+| `CodexProxyLauncher-<version>-win-x64-net48.exe`（轻量版） | 系统 .NET Framework 4.8 或 4.8.1 |
+| `CodexProxyLauncher-<version>-win-x64-net10.exe`（完整版） | 内置 .NET 10 运行时 |
+
+将所选 EXE 放到固定目录。可用 `Get-FileHash -Algorithm SHA256` 查看文件哈希，再与同一 Release 中的 `SHA256SUMS.txt` 对照。双击 EXE 即可打开设置。当前 EXE 未签名。
 
 ## 使用
 
@@ -23,14 +26,15 @@ Windows 桌面代理启动器，可为 Codex Desktop 指定 HTTP 代理，并按
 
 `--launch` 使用默认代理单次启动。指定代理或应用 ID 也会直接执行单次启动。遇到已有实例时，命令行默认提示手动退出并返回退出码 `3`。
 
-在解压目录打开 PowerShell 后运行所需命令。
+在 EXE 所在目录打开 PowerShell。将下方的文件名换成你下载或编译出的实际文件名。
 
 ```powershell
-& '.\CodexProxyLauncher.exe' --launch
-& '.\CodexProxyLauncher.exe' -Proxy 'http://127.0.0.1:7890'
-& '.\CodexProxyLauncher.exe' --restart-running --proxy 'http://127.0.0.1:7890'
-& '.\CodexProxyLauncher.exe' --self-test
-& '.\CodexProxyLauncher.exe' --self-test --help
+$launcher = '.\CodexProxyLauncher-0.1.0-win-x64-net48.exe'
+& $launcher --launch
+& $launcher -Proxy 'http://127.0.0.1:7890'
+& $launcher --restart-running --proxy 'http://127.0.0.1:7890'
+& $launcher --self-test
+& $launcher --self-test --help
 ```
 
 用 Windows 快捷方式自动重启时，将 `--restart-running` 加在「目标」中带引号的 EXE 路径之后，中间留一个空格。此开关会强制结束当前登录会话中属于 Codex 安装包且名称包含 `codex` 或 `chatgpt` 的进程，确认退出后再请求启动。仍需手动结束时，提示会列出进程名和 PID。执行前请保存正在进行的工作。
@@ -81,7 +85,7 @@ winget install --id Microsoft.DotNet.SDK.10 --exact --version 10.0.404 --archite
 
 ### 验证
 
-解压本次生成的轻量 ZIP，按 [测试说明](tests/README.md) 运行兼容性和冒烟测试。测试脚本可捕获 GUI 子系统 EXE 的自检输出。
+运行 `.\scripts\verify-release.ps1` 可构建并验证两个 Release EXE 和 SHA-256 校验文件。测试脚本可捕获 GUI 子系统 EXE 的自检输出。[测试说明](tests/README.md)
 
 ## 来源与许可
 
