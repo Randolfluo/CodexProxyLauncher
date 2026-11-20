@@ -16,11 +16,28 @@ internal sealed class SettingsWindow : Form
     private const int ResizeInset = 6;
     private const float AddressFontSizeInPoints = 10;
     private const int WsCaption = 0x00C00000;
+    private const int WsThickFrame = 0x00040000;
+    private const int WsExWindowEdge = 0x00000100;
+    private const int WsExComposited = 0x02000000;
+    private const int WmSize = 0x0005;
+    private const int WmWindowPosChanged = 0x0047;
     private const int WmNcCalcSize = 0x0083;
     private const int WmNcHitTest = 0x0084;
+    private const int WmNcPaint = 0x0085;
+    private const int WmNcActivate = 0x0086;
     private const int WmNcLButtonDown = 0x00A1;
     private const int WmSysCommand = 0x0112;
     private const int ScRestore = 0xF120;
+    private const int SizeRestored = 0;
+    private const int SizeMinimized = 1;
+    private const uint RdwInvalidate = 0x0001;
+    private const uint RdwErase = 0x0004;
+    private const uint RdwAllChildren = 0x0080;
+    private const uint RdwUpdateNow = 0x0100;
+    private static readonly IntPtr SkipNonClientPaint = new(-1);
+
+    private int lastSizeType;
+    private bool calculatingRestoreBounds;
 
     private readonly Font bodyFont = new("Microsoft YaHei UI", 9);
     private readonly Font titleFont = new("Segoe UI", 10.5f, FontStyle.Bold);
@@ -110,10 +127,17 @@ internal sealed class SettingsWindow : Form
 
         bool compact = false;
         bool stackedFields = false;
-        void Reflow()
+        (int Width, int InnerWidth) lastReflow = default;
+        void Reflow(bool dpiChanged = false)
         {
-            bool nextCompact = ClientSize.Width <= LogicalToDeviceUnits(CompactWindowWidth);
-            bool nextStackedFields = ClientSize.Width <= LogicalToDeviceUnits(StackedFieldsWidth);
+            var widths = (Width: ClientSize.Width, InnerWidth: ClientSize.Width - Padding.Horizontal);
+            // A minimized window receives a small temporary size, then restores its original layout.
+            if (WindowState == FormWindowState.Minimized || (!dpiChanged && widths == lastReflow))
+                return;
+
+            lastReflow = widths;
+            bool nextCompact = widths.Width <= LogicalToDeviceUnits(CompactWindowWidth);
+            bool nextStackedFields = widths.Width <= LogicalToDeviceUnits(StackedFieldsWidth);
             if (nextCompact != compact)
             {
                 compact = nextCompact;
@@ -129,10 +153,11 @@ internal sealed class SettingsWindow : Form
                 header.Padding = new Padding(inset, header.Padding.Top, header.Padding.Right, header.Padding.Bottom);
                 contents.ResumeLayout(performLayout: true);
             }
-            arrangeHeader(ClientSize.Width - Padding.Horizontal);
+            arrangeHeader(widths.InnerWidth);
         }
 
         ClientSizeChanged += (_, _) => Reflow();
+        PaddingChanged += (_, _) => Reflow();
         Resize += (_, _) => UpdateMaximizeButton(maximize, resizeGrip);
         DpiChanged += (_, _) => BeginInvoke((MethodInvoker)(() =>
         {
@@ -140,7 +165,7 @@ internal sealed class SettingsWindow : Form
             UpdateNativeInputFont();
 #endif
             FitToWorkingArea();
-            Reflow();
+            Reflow(dpiChanged: true);
         }));
 
         host.Text = settings.Host;
@@ -331,10 +356,10 @@ internal sealed class SettingsWindow : Form
         theme.ApplyWindowFrame(this, integratedTitleBar: true);
     }
 
-    protected override void OnShown(EventArgs e)
+    protected override void OnLoad(EventArgs e)
     {
-        base.OnShown(e);
         FitToWorkingArea();
+        base.OnLoad(e);
     }
 
     protected override CreateParams CreateParams
@@ -343,6 +368,15 @@ internal sealed class SettingsWindow : Form
         {
             CreateParams parameters = base.CreateParams;
             parameters.Style &= ~WsCaption;
+            // Buffer the form and its child windows as one frame.
+            parameters.ExStyle |= WsExComposited;
+            if (calculatingRestoreBounds)
+            {
+                // WinForms may convert its saved client size using the native frame styles.
+                // Our client already fills the window, so there is no border to add back.
+                parameters.Style &= ~WsThickFrame;
+                parameters.ExStyle &= ~WsExWindowEdge;
+            }
             return parameters;
         }
     }
@@ -372,6 +406,27 @@ internal sealed class SettingsWindow : Form
             return;
         }
 
+        if (message.Msg == WmNcPaint && !IsIconic(message.HWnd))
+        {
+            message.Result = IntPtr.Zero;
+            return;
+        }
+
+        if (message.Msg == WmNcActivate && !IsIconic(message.HWnd))
+        {
+            // Let Windows update activation without painting its frame over the client.
+            message.LParam = SkipNonClientPaint;
+        }
+
+        if (message.Msg == WmWindowPosChanged && lastSizeType != SizeRestored && !IsIconic(message.HWnd))
+        {
+            RestoreWindowPosition(ref message);
+            return;
+        }
+
+        if (message.Msg == WmSize)
+            lastSizeType = message.WParam.ToInt32();
+
         if (message.Msg == WmNcHitTest && IsHandleCreated)
         {
             int coordinates = unchecked((int)message.LParam);
@@ -384,6 +439,25 @@ internal sealed class SettingsWindow : Form
         }
 
         base.WndProc(ref message);
+    }
+
+    private void RestoreWindowPosition(ref Message message)
+    {
+        bool wasMinimized = lastSizeType == SizeMinimized;
+        bool previous = calculatingRestoreBounds;
+        calculatingRestoreBounds = !IsZoomed(message.HWnd);
+        try
+        {
+            base.WndProc(ref message);
+        }
+        finally
+        {
+            calculatingRestoreBounds = previous;
+        }
+
+        // Windows can restore directly from the taskbar. Paint all controls after the layout settles.
+        if (wasMinimized && lastSizeType != SizeMinimized)
+            RedrawWindow(message.HWnd, IntPtr.Zero, IntPtr.Zero, RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow);
     }
 
     private static void FitMaximizedClientArea(IntPtr parameters)
@@ -1141,6 +1215,14 @@ internal sealed class SettingsWindow : Form
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsZoomed(IntPtr window);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr window);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RedrawWindow(IntPtr window, IntPtr updateRectangle, IntPtr updateRegion, uint flags);
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

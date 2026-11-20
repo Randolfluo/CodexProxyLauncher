@@ -87,6 +87,7 @@ try {
 }
 
 & (Join-Path $PSScriptRoot 'tray-menu.ps1') -AssemblyPath $Executable
+& (Join-Path $PSScriptRoot 'settings-window.ps1') -AssemblyPath $Executable
 
 if (-not $CheckProxy) { return }
 

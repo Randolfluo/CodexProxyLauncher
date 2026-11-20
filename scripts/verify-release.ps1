@@ -37,6 +37,10 @@ foreach ($executable in $lightweight, $full) {
 
 $fullAssembly = Join-Path $projectRoot 'src\CodexProxyLauncher\bin\Release\net10.0-windows\win-x64\CodexProxyLauncher.dll'
 & (Join-Path $testDirectory 'release-assets.ps1') -Directory $assetsDirectory -Version $version -FullAssemblyPath $fullAssembly | Out-Host
+# Only a PowerShell host running on .NET 10 or later can open the .NET 10 WinForms assembly.
+if ([Environment]::Version.Major -ge 10) {
+    & (Join-Path $testDirectory 'settings-window.ps1') -AssemblyPath $fullAssembly | Out-Host
+}
 foreach ($executable in $lightweight, $full) {
     & (Join-Path $testDirectory 'compatibility.ps1') -Executable $executable | Out-Host
 }
