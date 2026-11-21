@@ -57,6 +57,14 @@ if ($fragment -match '<(?:!doctype|html|head|body)\b') {
     throw 'The Codex preview fragment must fit inside an existing HTML document.'
 }
 
+$projectFile = Join-Path $projectRoot 'src/CodexProxyLauncher/CodexProxyLauncher.csproj'
+$project = [xml](Get-Content -Raw -Encoding utf8 -LiteralPath $projectFile)
+$version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+$previewVersionPattern = '>version\s+' + [regex]::Escape($version) + '\s*</span>'
+if ($fragment -notmatch $previewVersionPattern) {
+    throw "The UI preview footer must display the launcher version $version."
+}
+
 $controls = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($match in [regex]::Matches($fragment, '\bdata-ui="(?<name>[^"]+)"')) {
     $name = $match.Groups['name'].Value
@@ -75,4 +83,4 @@ foreach ($reference in [regex]::Matches($fragment, '\bui\.(?<name>[a-zA-Z]\w*)')
         throw "The UI preview script references a missing control '$name'."
     }
 }
-Write-Output 'PASS: standalone UI preview, Codex fragment, and preview control bindings.'
+Write-Output 'PASS: standalone UI preview, version, Codex fragment, and preview control bindings.'

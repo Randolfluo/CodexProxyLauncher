@@ -45,13 +45,13 @@ HTTP proxy launcher for Codex Desktop on Windows 11 x64.
 在 EXE 所在目录打开 PowerShell，将文件名和代理地址换成实际值。
 
 ```powershell
-.\CodexProxyLauncher-0.1.0-win-x64-net48.exe --launch --proxy http://127.0.0.1:7890
+.\CodexProxyLauncher-0.1.1-win-x64-net48.exe --launch --proxy http://127.0.0.1:7890
 ```
 
 创建 Windows 快捷方式，在「属性 → 目标」中填写带引号的实际 EXE 路径，后接空格和参数。
 
 ```text
-"C:\Tools\Codex Proxy Launcher\CodexProxyLauncher-0.1.0-win-x64-net48.exe" --launch --proxy http://127.0.0.1:7890
+"C:\Tools\Codex Proxy Launcher\CodexProxyLauncher-0.1.1-win-x64-net48.exe" --launch --proxy http://127.0.0.1:7890
 ```
 
 Codex 已运行时，启动器默认提示先退出旧实例。添加 `--restart-running` 会强制结束旧进程后重新启动，可能中断正在运行的任务。

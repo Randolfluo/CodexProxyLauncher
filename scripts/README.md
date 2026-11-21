@@ -23,16 +23,16 @@
 
 ```powershell
 .\scripts\verify-release.ps1
-.\scripts\verify-release.ps1 -Tag v0.1.0
+.\scripts\verify-release.ps1 -Tag v0.1.1
 ```
 
 指定标签时，脚本还会核对标签与包版本。所有检查通过后，最后一行输出 `release-assets` 目录的路径。目录包含两个用于下载的 EXE，每个 EXE 各有一个同名 `.exe.sha256` 文件。各项测试见 [测试说明](../tests/README.md)。
 
-[GitHub Actions 工作流](../.github/workflows/release.yml) 在推送 `main`、向 `main` 提交 PR 或推送以 `v` 开头的标签时执行验证。标签对应的验证通过后，发布任务会将两个 EXE 及对应的校验文件附到 GitHub Release，源码归档由 GitHub 自动生成。标签取自项目的 `Version`，例如 `0.1.0` 对应 `v0.1.0`。
+[GitHub Actions 工作流](../.github/workflows/release.yml) 在推送 `main`、向 `main` 提交 PR 或推送以 `v` 开头的标签时执行验证。标签对应的验证通过后，发布任务会将两个 EXE 及对应的校验文件附到 GitHub Release，源码归档由 GitHub 自动生成。标签取自项目的 `Version`，例如 `0.1.1` 对应 `v0.1.1`。
 
 ```powershell
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin refs/tags/v0.1.0
+git tag -a v0.1.1 -m "Release v0.1.1"
+git push origin refs/tags/v0.1.1
 ```
 
 工作流通过 `gh release create --generate-notes` 让 GitHub 生成更新说明。可在 Release 页右上角选择编辑，填写面向用户的 Markdown 更新说明。[GitHub 自动生成发布说明](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes)
