@@ -31,7 +31,7 @@ powershell.exe -NoProfile -STA -File .\tests\lightweight-smoke.ps1 -Executable $
 
 ## 文档链接
 
-在项目根目录用 PowerShell 7 检查 README 顶部的下载入口及本地 Markdown 链接和图片。
+在项目根目录用 PowerShell 7 检查 README 的下载入口、交互预览入口、本地 Markdown 链接和图片，以及交互预览的嵌入片段和控件引用。
 
 ```powershell
 .\tests\docs-links.ps1

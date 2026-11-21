@@ -6,6 +6,8 @@ HTTP proxy launcher for Codex Desktop on Windows 11 x64.
 
 [下载 Windows 版 · Download for Windows](https://github.com/Randolfluo/CodexProxyLauncher/releases)
 
+可在本地浏览器中试用设置窗口、托盘菜单和关键状态。[界面交互预览](docs/ui-preview.html)
+
 ![Codex Proxy Launcher 设置界面](docs/images/settings.png)
 
 ## 安装

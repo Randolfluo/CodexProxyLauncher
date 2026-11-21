@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Codex Proxy Launcher · 界面预览</title>
+  <style>
+    :root { background: light-dark(#ffffff, #151917); }
+    body {
+      box-sizing: border-box;
+      max-width: 1056px;
+      margin: 0 auto;
+      padding: 12px clamp(8px, 2vw, 16px);
+    }
+  </style>
+</head>
+<body>
+<!-- BEGIN CODEX PREVIEW -->
+<div id="launcher-ui-preview" lang="zh-CN">
+  <div class="desktop" data-ui="desktop" data-window="normal">
+    <section class="window" data-ui="window" aria-labelledby="launcher-preview-title">
+      <header class="title-bar">
+        <div class="window-name">
+          <img class="app-mark" alt="" width="28" height="28" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAASNSURBVEhLpZbtb1NVHMc31D8AkGzdWlo2R0hmAN3YGG8FJcYEo29UEn1hSJiW8hBDwgujifOVidHhBkY2EkATMTFBBCJGURBGxMg2HZPI1t7bbr1P5z603daett9jfre9XdeJJnqST37nnnvv93t/5/HW1ZWLEHX1Qpx9wLv+r4U0hBD1te2V4miJ9RlHfcUxZyKmFo8YmrSfMMu4daOq3YhH6Fn3HSexvlavjtyEECuEEA9aevxoxlY4uCNEPiWQdwTV3VgLtdeQcRTusMRRIX55qKxZX3f2bKlbdCU2LERWME0qMk3iejLGLT3ObZbgtpEoxWq8NopGgjNN5kyViqShK7GTpOlp1zEl0cPnGYlzMtCS05izFSiJe5CmJiBHJ2u4U8MkDCUGetfU5Zyrpca2VbqJqXKfyKfAVIlrs1MoZE18+81X6OrZgo6uDmzZ2okt3Z3o7F6Mbn1rp3t/67bu4sT4z0hbs9CVGCctS5f7KgaGEhukPtSTUZ7N6Lh04Uu0rn8E/qAfLW2t8IcC8AeXEgiVaF7rR6g1hPHbI0hbScrEHUNTkwcXM9CkjwpZS8ynVP7D95cQbA0h1LoObRvaXJNNj2/CYx2bsblj85JI0L3Org78Xs7AM2BKbKA6g4H8gikKWYsfP/YhVjeswYb2DQi2BIvv9r0FefoO/py8jak/RjF1d7QUq7k7CupapkRhKFEObtN4LjfIL5h8eOgYfP4m+AJNxd7ePUVRSMFxNKTnTKQztbBKtB0NlqPBTulciNxSA0rHMxgaGnQNGv0+HD58ADxrQbr1HaRr5yBdPw/pp/OlWIVM3Pga8ZELkK+d4wvSmGDGTE0G2aUGPr8Phw6FURQLuPX2y7jy7Dpc3b0RV19oL/744qMgrhIvVbF7E67sCvLoB2HhZNj9usgzaMKhg2EUChmMvr8f1/dsw83IDoy8/gRGwiVuumzHSHi7G+n+9Vd7eHz4TeGkjZou8jI4UTJoaG7EkSNvQHAHiXvjSE5VMV2mqk2LTXjwQka9/yCfHC4NcrAliKef2Qltdhq0cGgs8ln7vlhsFkyPwzQSXBTSf29A0/Tj4/1Y+fAqtG9sR0NTI557flfxi89P4fSpT3Dm9Al86jJUgdo+OzOMRGySVi8MldZBzTSlhVbM2SJlzvCJ8Vvo7ulCU6DZNQm2hIqUEV37ylDdZW0zGv1NxcC6tRhzV/LiQqOPrjYYoC2YtoqFtIaJ30omK9esroj5Au7aIEGX8lpxp3MgtNzAVGKLW4WpSe/RYHqbHe1HY7/eQDi8F5H9ry0l0ot9kV430vW+fb04cDCMqbtjcFjCNRB5B6RZMbCZ/BR1EVOlHFMl6MlppMwZ5BdM8DkDfJ79A4b7TLn/6SNzlIHN5J2uePnkWaGr0ctCzNPgkAmnL9Fmp7mWjJapri+HqTE6cHIlDfmyp+sdmfXCtlemzJmLhZxdOS4FT7n1f8M7Yt2JYiUv2ra8ytP1sqj8BaRtZUfaSvZZerzf0qR+pklHCbr26jVt/RTnHPWdjK0+6eks+7NY4vg/Sq3OXy/j3O12gm8eAAAAAElFTkSuQmCC">
+          <h1 id="launcher-preview-title">Codex Proxy Launcher</h1>
+        </div>
+        <fieldset class="themes">
+          <legend class="assistive">外观</legend>
+          <label><input type="radio" name="launcher-preview-theme" value="light"><span>浅色模式</span></label>
+          <label><input type="radio" name="launcher-preview-theme" value="dark"><span>深色模式</span></label>
+          <label><input type="radio" name="launcher-preview-theme" value="system" checked><span>跟随系统</span></label>
+        </fieldset>
+        <div class="caption-buttons">
+          <button type="button" data-ui="minimize" class="caption" aria-label="最小化窗口" data-tooltip="最小化窗口"><i class="glyph minus" data-lucide="minus" aria-hidden="true"></i></button>
+          <button type="button" data-ui="maximize" class="caption" aria-label="最大化窗口" data-tooltip="最大化窗口">
+            <i class="glyph square" data-lucide="square" aria-hidden="true"></i>
+            <i class="glyph restore" data-lucide="copy" aria-hidden="true"></i>
+          </button>
+          <button type="button" data-ui="close" class="caption close" aria-label="关闭时最小化到托盘" data-tooltip="关闭时最小化到托盘"><i class="glyph cross" data-lucide="x" aria-hidden="true"></i></button>
+        </div>
+      </header>
+
+      <div class="settings">
+        <section class="section" aria-labelledby="launcher-preview-proxy-title">
+          <div class="section-heading">
+            <h2 id="launcher-preview-proxy-title">HTTP 代理</h2>
+            <span class="muted" data-ui="save" role="status">更改将自动保存</span>
+          </div>
+          <div class="proxy-fields">
+            <label>代理主机<input data-ui="host" type="text" value="127.0.0.1" maxlength="255" autocomplete="off" spellcheck="false" aria-describedby="launcher-preview-validation"></label>
+            <label>代理端口<input data-ui="port" type="text" value="7897" inputmode="numeric" autocomplete="off" aria-describedby="launcher-preview-validation"></label>
+          </div>
+          <p id="launcher-preview-validation" class="validation" data-ui="validation" role="alert" hidden></p>
+          <div class="section-heading check-heading">
+            <h2>连接检测</h2>
+            <button type="button" data-ui="test" class="button test-button">检测代理</button>
+          </div>
+          <dl class="check-results" aria-live="polite">
+            <div><dt>TCP 端口</dt><dd data-ui="tcp" class="status">待检测</dd></div>
+            <div><dt>HTTP 代理请求</dt><dd data-ui="http" class="status">待检测</dd></div>
+          </dl>
+        </section>
+
+        <section class="section action-row" aria-labelledby="launcher-preview-launch-title">
+          <div class="launch-copy">
+            <div class="launch-heading">
+              <h2 id="launcher-preview-launch-title">最近一次启动</h2>
+              <time data-ui="launchTime" hidden></time>
+            </div>
+            <div data-ui="launchStatus" class="status" role="status">尚未启动</div>
+            <button type="button" data-ui="launchDetails" class="text-button" hidden>查看失败详情</button>
+          </div>
+          <button type="button" data-ui="launch" class="button primary launch-button">使用代理启动 Codex</button>
+        </section>
+
+        <section class="section options" aria-labelledby="launcher-preview-important-title">
+          <h2 id="launcher-preview-important-title">重要选项</h2>
+          <div class="setting">
+            <div class="setting-copy">
+              <div class="restart-heading">
+                <label for="launcher-preview-restart">启动前清理旧进程</label>
+                <span class="help-anchor" data-ui="helpAnchor">
+                  <button type="button" class="help-trigger" data-ui="help" aria-label="为什么要清理旧进程？" aria-controls="launcher-preview-help" aria-expanded="false">?</button>
+                </span>
+              </div>
+              <span class="muted" data-tone="warning" id="launcher-preview-restart-note">可能中断正在进行的 Codex 任务。</span>
+              <div class="help-popup" data-ui="helpPopup" id="launcher-preview-help" hidden>
+                <strong>为什么要清理旧进程？</strong>
+                <p>启动器会在启动 Codex 时传入当前代理设置。已在运行的 Codex 需要退出后重开，才能使用这次的代理。</p>
+                <p>开启后，代理启动会先结束旧实例，可能中断正在运行的任务。关闭时，检测到旧实例会提示你先退出再重试。</p>
+              </div>
+            </div>
+            <input type="checkbox" role="switch" id="launcher-preview-restart" data-preference="restart" aria-describedby="launcher-preview-restart-note">
+          </div>
+          <div class="action-row cleanup">
+            <div class="muted" data-ui="cleanupStatus" role="status">结束当前会话中的 Codex 进程，之后可手动打开。</div>
+            <button type="button" data-ui="cleanup" class="button cleanup-button" aria-haspopup="dialog">清理旧进程…</button>
+          </div>
+        </section>
+
+        <section class="section options launcher-options" aria-labelledby="launcher-preview-options-title">
+          <h2 id="launcher-preview-options-title">启动器选项</h2>
+          <label class="setting">
+            <span class="setting-copy">
+              <span id="launcher-preview-login-label">登录自启</span>
+              <span class="muted">登录 Windows 后自动运行启动器。</span>
+            </span>
+            <input type="checkbox" role="switch" data-preference="login" aria-labelledby="launcher-preview-login-label">
+          </label>
+          <label class="setting">
+            <span class="setting-copy">
+              <span id="launcher-preview-silent-label">静默启动</span>
+              <span class="muted">登录自启时只显示托盘图标。</span>
+            </span>
+            <input type="checkbox" role="switch" data-preference="silent" aria-labelledby="launcher-preview-silent-label">
+          </label>
+          <label class="setting">
+            <span class="setting-copy">
+              <span id="launcher-preview-auto-label">登录自启后使用代理启动 Codex</span>
+              <span class="muted">启动时使用已保存的代理。</span>
+            </span>
+            <input type="checkbox" role="switch" data-preference="autoLaunch" aria-labelledby="launcher-preview-auto-label">
+          </label>
+          <p class="registration-note muted" data-ui="registrationNote" data-tone="warning" hidden>
+            登录时将运行另一位置的启动器。关闭「登录自启」后重新开启可切换到此版本。
+            <code>C:\Tools\CodexProxyLauncher\previous\CodexProxyLauncher.exe</code>
+          </p>
+          <label class="setting close-setting">
+            <span class="setting-copy">
+              <span id="launcher-preview-close-label">关闭时最小化到托盘</span>
+              <span class="muted">关闭窗口后，启动器留在托盘。</span>
+            </span>
+            <input type="checkbox" role="switch" data-preference="closeToTray" aria-labelledby="launcher-preview-close-label" checked>
+          </label>
+        </section>
+      </div>
+      <footer class="window-footer">
+        <span>version 0.1.0</span>
+        <button type="button" class="resize-grip" data-ui="resize" aria-label="调整窗口宽度" data-tooltip="拖动或用左右方向键调整窗口宽度"></button>
+      </footer>
+    </section>
+
+    <aside class="tray-rail" aria-label="托盘预览">
+      <button type="button" data-ui="trayToggle" class="button tray-toggle" aria-expanded="true" aria-controls="launcher-preview-tray">
+        <img class="tray-mark" data-ui="trayMark" alt="" width="17" height="17">
+        <span>托盘菜单</span><i class="glyph chevron" data-lucide="chevron-down" aria-hidden="true"></i>
+      </button>
+      <section class="tray-menu" data-ui="trayMenu" id="launcher-preview-tray" aria-label="代理启动器托盘菜单">
+        <h2 class="tray-title"><i class="glyph" data-lucide="link-2" aria-hidden="true"></i>代理启动器</h2>
+        <div class="tray-address" data-ui="trayAddress">
+          <span data-ui="trayProtocol">HTTP</span>
+          <span data-ui="trayEndpoint">127.0.0.1:7897</span>
+        </div>
+        <button type="button" data-ui="trayLaunch" class="button primary tray-item">
+          <i class="glyph" data-lucide="play" aria-hidden="true"></i><span data-ui="trayLaunchText">使用代理启动 Codex</span>
+        </button>
+        <button type="button" data-ui="traySettings" class="tray-item">
+          <i class="glyph" data-lucide="settings" aria-hidden="true"></i>打开设置
+        </button>
+        <button type="button" data-ui="trayExit" class="tray-item tray-exit">
+          <i class="glyph" data-lucide="log-out" aria-hidden="true"></i>退出启动器
+        </button>
+      </section>
+      <button type="button" data-ui="reopen" class="button" hidden>重新打开启动器</button>
+      <label class="scenario">
+        <span>演示状态</span>
+        <select data-ui="scene">
+          <option value="normal">Codex 已在运行</option>
+          <option value="idle">没有旧进程</option>
+          <option value="proxyError">代理检测失败</option>
+          <option value="launchError">启动请求失败</option>
+          <option value="oldStartup">旧自启路径</option>
+        </select>
+      </label>
+    </aside>
+  </div>
+
+  <dialog data-ui="confirmation" aria-labelledby="launcher-preview-confirm-title" aria-describedby="launcher-preview-confirm-description">
+    <h2 id="launcher-preview-confirm-title">清理 Codex 旧进程？</h2>
+    <p id="launcher-preview-confirm-description">这会关闭当前 Windows 会话中的 Codex。<br>正在进行的任务可能中断。</p>
+    <div class="dialog-actions">
+      <button type="button" data-ui="cancelCleanup" class="button">取消</button>
+      <button type="button" data-ui="confirmCleanup" class="button destructive">确认清理</button>
+    </div>
+  </dialog>
+  <dialog data-ui="failure" aria-labelledby="launcher-preview-failure-title">
+    <h2 id="launcher-preview-failure-title">启动失败</h2>
+    <p>Windows 未能接受 Codex 的启动请求。</p>
+    <div class="dialog-actions"><button type="button" data-ui="closeFailure" class="button primary">确定</button></div>
+  </dialog>
+</div>
+<style>
+  #launcher-ui-preview {
+    --launcher-background: light-dark(#f5f7f4, #181d1a);
+    --launcher-surface: light-dark(#ffffff, #222a25);
+    --launcher-results: light-dark(#ffffff, #141b16);
+    --launcher-menu: light-dark(#ffffff, #1d2520);
+    --launcher-soft: light-dark(#ecf1ec, #303d34);
+    --launcher-ink: light-dark(#26322c, #edf3ee);
+    --launcher-muted: light-dark(#53635a, #b8c6bb);
+    --launcher-border: light-dark(#d6ded7, #435148);
+    --launcher-control: light-dark(#aebbb1, #819386);
+    --launcher-accent: light-dark(#2f6b4d, #7dd59b);
+    --launcher-accent-hover: light-dark(#255b40, #9de7b2);
+    --launcher-on-accent: light-dark(#ffffff, #102a19);
+    --launcher-selection: light-dark(#dfeee3, #304b39);
+    --launcher-selection-border: light-dark(#6f927a, #8fba99);
+    --launcher-switch-off: light-dark(#788a7f, #52665b);
+    --launcher-switch-thumb: light-dark(#ffffff, #dce8df);
+    --launcher-success: light-dark(#20583c, #a8e9ba);
+    --launcher-warning: light-dark(#7e521b, #f1ce88);
+    --launcher-error: light-dark(#a63030, #ffb3aa);
+    --launcher-error-hover: light-dark(#8b2727, #ffc9c3);
+    --launcher-on-error: light-dark(#ffffff, #381817);
+    --launcher-error-surface: light-dark(#faefec, #3b2b28);
+    --launcher-shadow: light-dark(#20382c1f, #00000065);
+    color: var(--launcher-ink);
+    font: 14px/1.42 "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+    container-type: inline-size;
+    padding-block: 4px 12px;
+  }
+  #launcher-ui-preview[data-theme="light"] { color-scheme: light; }
+  #launcher-ui-preview[data-theme="dark"] { color-scheme: dark; }
+  #launcher-ui-preview *, #launcher-ui-preview *::before, #launcher-ui-preview *::after { box-sizing: border-box; }
+  #launcher-ui-preview [hidden] { display: none !important; }
+  #launcher-ui-preview :is(h1,h2,p,dl,dd,fieldset) { margin: 0; }
+  #launcher-ui-preview :is(h1,h2) { font-size: 15px; font-weight: 650; }
+  #launcher-ui-preview :is(button,input,select) { font: inherit; color: inherit; }
+  #launcher-ui-preview :is(button,input,select):focus-visible { outline: 2px solid var(--launcher-accent); outline-offset: 2px; }
+  #launcher-ui-preview .assistive {
+    position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden;
+  }
+  #launcher-ui-preview .muted { color: var(--launcher-muted); font-size: 12px; }
+  #launcher-ui-preview [data-tone="working"], #launcher-ui-preview [data-tone="success"] { color: var(--launcher-success); }
+  #launcher-ui-preview [data-tone="warning"] { color: var(--launcher-warning); }
+  #launcher-ui-preview [data-tone="error"] { color: var(--launcher-error); }
+
+  #launcher-ui-preview .desktop { display: grid; grid-template-columns: minmax(0,1fr) minmax(215px,264px); align-items: start; gap: 16px; }
+  #launcher-ui-preview .desktop:not([data-window="normal"]) { grid-template-columns: minmax(0,1fr); }
+  #launcher-ui-preview .window {
+    width: min(100%, var(--launcher-window-width, 100%));
+    min-width: 0;
+    background: var(--launcher-background);
+    border: 1px solid var(--launcher-border);
+    border-radius: 9px;
+    box-shadow: 0 3px 10px var(--launcher-shadow);
+    container-type: inline-size;
+  }
+  #launcher-ui-preview .desktop[data-window="maximized"] .window { width: 100%; border-radius: 3px; }
+  #launcher-ui-preview .title-bar {
+    display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center;
+    gap: 8px; padding: 8px 9px 7px 19px;
+  }
+  #launcher-ui-preview .window-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  #launcher-ui-preview .window-name h1 { font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif; overflow-wrap: anywhere; }
+  #launcher-ui-preview .app-mark { flex: none; }
+  #launcher-ui-preview .themes { display: flex; min-inline-size: 0; padding: 2px; border: 1px solid var(--launcher-control); background: var(--launcher-surface); }
+  #launcher-ui-preview .themes label { position: relative; flex: 1; text-align: center; }
+  #launcher-ui-preview .themes input { position: absolute; inset: 0; opacity: 0; margin: 0; }
+  #launcher-ui-preview .themes span { display: block; font-size: 12px; padding: 5px 8px; white-space: nowrap; border: 1px solid transparent; }
+  #launcher-ui-preview .themes input:hover + span { background: var(--launcher-soft); }
+  #launcher-ui-preview .themes input:checked + span { background: var(--launcher-selection); border-color: var(--launcher-selection-border); }
+  #launcher-ui-preview .themes input:focus-visible + span { outline: 2px solid var(--launcher-accent); outline-offset: -2px; }
+  #launcher-ui-preview .caption-buttons { display: flex; gap: 1px; }
+  #launcher-ui-preview .caption {
+    display: grid; place-items: center; width: 31px; height: 33px; padding: 0;
+    background: transparent; border: 0; border-radius: 3px;
+  }
+  #launcher-ui-preview .caption:hover { background: var(--launcher-soft); }
+  #launcher-ui-preview .caption.close:hover { color: var(--launcher-error); background: var(--launcher-error-surface); }
+  #launcher-ui-preview .glyph { display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; font-style: normal; }
+  #launcher-ui-preview .caption .restore,
+  #launcher-ui-preview .desktop[data-window="maximized"] .caption .square { display: none; }
+  #launcher-ui-preview .desktop[data-window="maximized"] .caption .restore { display: inline-grid; }
+  #launcher-ui-preview i.minus::before { content: "−"; }
+  #launcher-ui-preview i.square::before { content: "□"; }
+  #launcher-ui-preview i.restore::before { content: "❐"; }
+  #launcher-ui-preview i.cross::before { content: "×"; }
+  #launcher-ui-preview i.chevron::before { content: "⌄"; }
+  #launcher-ui-preview i[data-lucide="link-2"]::before { content: "↔"; }
+  #launcher-ui-preview i[data-lucide="play"]::before { content: "▷"; }
+  #launcher-ui-preview i[data-lucide="settings"]::before { content: "⚙"; }
+  #launcher-ui-preview i[data-lucide="log-out"]::before { content: "↪"; }
+
+  #launcher-ui-preview .settings { padding: 2px 20px 11px; }
+  #launcher-ui-preview .section + .section { border-top: 1px solid var(--launcher-border); margin-top: 12px; padding-top: 12px; }
+  #launcher-ui-preview .section-heading, #launcher-ui-preview .launch-heading {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 11px;
+  }
+  #launcher-ui-preview .launch-heading { justify-content: flex-start; align-items: baseline; margin-bottom: 3px; }
+  #launcher-ui-preview .proxy-fields { display: grid; grid-template-columns: minmax(0,1fr) minmax(86px,132px); gap: 9px; margin-top: 7px; }
+  #launcher-ui-preview .proxy-fields label { display: grid; gap: 3px; color: var(--launcher-muted); font-size: 12px; }
+  #launcher-ui-preview .proxy-fields input {
+    width: 100%; min-width: 0; min-height: 34px; padding: 6px 9px;
+    background: var(--launcher-surface); border: 1px solid var(--launcher-control); border-radius: 0;
+    color: var(--launcher-ink); font: 14px/1.35 Consolas, "Courier New", monospace;
+  }
+  #launcher-ui-preview .proxy-fields input[aria-invalid="true"] { border-color: var(--launcher-error); }
+  #launcher-ui-preview .validation { margin-top: 5px; color: var(--launcher-error); font-size: 12px; }
+  #launcher-ui-preview .check-heading { margin: 9px 0 6px; }
+  #launcher-ui-preview .check-results { border: 1px solid var(--launcher-border); background: var(--launcher-results); padding-inline: 10px; }
+  #launcher-ui-preview .check-results > div { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; column-gap: 7px; padding-block: 5px; }
+  #launcher-ui-preview .check-results > div + div { border-top: 1px solid var(--launcher-border); }
+  #launcher-ui-preview .check-results dt { font-size: 13px; }
+  #launcher-ui-preview .check-results dd { max-inline-size: 205px; text-align: end; }
+  #launcher-ui-preview .status { display: flex; align-items: baseline; gap: 6px; color: var(--launcher-muted); font-size: 12px; line-height: 1.4; }
+  #launcher-ui-preview .status::before {
+    align-self: center; flex: 0 0 7px; height: 7px; border-radius: 50%; content: ""; background: currentColor;
+  }
+  #launcher-ui-preview .launch-heading time { color: var(--launcher-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #launcher-ui-preview .text-button { padding: 2px 0; background: transparent; border: 0; color: var(--launcher-accent); text-decoration: underline; font-size: 12px; }
+  #launcher-ui-preview .action-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 6px 14px; }
+  #launcher-ui-preview .button {
+    min-height: 32px; padding: 6px 12px; border: 1px solid var(--launcher-control); border-radius: 2px;
+    background: var(--launcher-surface); color: var(--launcher-ink);
+    transition: transform 110ms ease, background-color 150ms ease, color 150ms ease;
+  }
+  #launcher-ui-preview .button:hover:not(:disabled) { background: var(--launcher-soft); }
+  #launcher-ui-preview .button:active:not(:disabled) { transform: translateY(1px); }
+  #launcher-ui-preview .button:disabled { color: var(--launcher-muted); background: var(--launcher-soft); border-color: var(--launcher-border); }
+  #launcher-ui-preview .test-button { min-width: 102px; }
+  #launcher-ui-preview .launch-button { min-width: 183px; min-height: 40px; }
+  #launcher-ui-preview .cleanup-button { min-width: 116px; }
+  #launcher-ui-preview .primary:not(:disabled) { background: var(--launcher-accent); color: var(--launcher-on-accent); border-color: transparent; }
+  #launcher-ui-preview .primary:hover:not(:disabled) { background: var(--launcher-accent-hover); }
+  #launcher-ui-preview .destructive:not(:disabled) { background: var(--launcher-error); color: var(--launcher-on-error); border-color: transparent; }
+  #launcher-ui-preview .destructive:hover:not(:disabled) { background: var(--launcher-error-hover); }
+
+  #launcher-ui-preview .options h2 { margin-bottom: 4px; }
+  #launcher-ui-preview .setting { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 4px 0; }
+  #launcher-ui-preview .setting-copy { position: relative; display: grid; gap: 0; min-width: 0; }
+  #launcher-ui-preview .restart-heading { display: flex; align-items: center; gap: 4px; }
+  #launcher-ui-preview .help-trigger {
+    display: grid; place-items: center; width: 18px; height: 18px; margin: 2px 0; padding: 0;
+    border: 1px solid var(--launcher-control); border-radius: 50%; background: transparent; color: var(--launcher-muted); font-size: 12px;
+  }
+  #launcher-ui-preview .help-trigger:hover { background: var(--launcher-soft); }
+  #launcher-ui-preview .help-popup {
+    position: absolute; inset-block-start: 100%; inset-inline-start: 0; width: min(350px,100%); z-index: 3;
+    background: var(--launcher-surface); border: 1px solid var(--launcher-border); border-radius: 8px; padding: 10px 12px;
+    box-shadow: 0 5px 14px var(--launcher-shadow); font-size: 12px;
+  }
+  #launcher-ui-preview .help-popup p { margin-top: 4px; }
+  #launcher-ui-preview .cleanup { border-top: 1px solid var(--launcher-border); margin-top: 5px; padding-top: 7px; }
+  #launcher-ui-preview .close-setting { border-top: 1px solid var(--launcher-border); margin-top: 4px; padding-top: 7px; }
+  #launcher-ui-preview .registration-note { padding: 3px 0 5px; overflow-wrap: anywhere; }
+  #launcher-ui-preview .registration-note code { display: block; font: 11px/1.4 Consolas, monospace; }
+  #launcher-ui-preview input[role="switch"] {
+    appearance: none; position: relative; width: 40px; height: 21px; margin: 0;
+    border: 1px solid var(--launcher-switch-off); border-radius: 99px; background: var(--launcher-switch-off);
+    transition: background-color 160ms ease, border-color 160ms ease;
+  }
+  #launcher-ui-preview input[role="switch"]::before {
+    content: ""; position: absolute; width: 15px; height: 15px; inset: 2px auto auto 3px;
+    border-radius: 50%; background: var(--launcher-switch-thumb); transition: transform 165ms ease;
+  }
+  #launcher-ui-preview input[role="switch"]:checked { background: var(--launcher-accent); border-color: var(--launcher-accent); }
+  #launcher-ui-preview input[role="switch"]:checked::before { transform: translateX(17px); background: var(--launcher-on-accent); }
+  #launcher-ui-preview .window-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 7px 4px 20px; border-top: 1px solid var(--launcher-border); color: var(--launcher-muted); font-size: 12px;
+  }
+  #launcher-ui-preview .resize-grip {
+    border: 0; background: transparent; width: 26px; height: 24px; padding: 5px; touch-action: none; cursor: ew-resize;
+  }
+  #launcher-ui-preview .resize-grip::before {
+    content: ""; display: block; width: 100%; height: 100%;
+    background: repeating-linear-gradient(135deg, transparent 0 3px, currentColor 3px 4px);
+    clip-path: polygon(0 100%,100% 0,100% 100%);
+  }
+
+  #launcher-ui-preview .tray-rail { display: grid; min-width: 0; gap: 8px; width: min(100%,264px); }
+  #launcher-ui-preview .tray-toggle { display: flex; align-items: center; gap: 8px; justify-content: flex-start; border-radius: 7px; background: var(--launcher-background); }
+  #launcher-ui-preview .tray-toggle .chevron { margin-inline-start: auto; }
+  #launcher-ui-preview .tray-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+  #launcher-ui-preview .tray-menu {
+    background: var(--launcher-menu); border: 1px solid var(--launcher-border); border-radius: 12px; padding: 11px;
+    box-shadow: 0 4px 16px var(--launcher-shadow); display: grid; gap: 4px; min-width: 0;
+  }
+  #launcher-ui-preview .tray-title { display: flex; align-items: center; gap: 7px; min-height: 22px; font-size: 14px; }
+  #launcher-ui-preview .tray-title .glyph { color: var(--launcher-muted); }
+  #launcher-ui-preview .tray-address {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 2px 0 4px;
+    min-width: 0; background: var(--launcher-soft); border-radius: 6px; color: var(--launcher-muted); font-size: 12px;
+  }
+  #launcher-ui-preview .tray-address[data-invalid="true"] { background: var(--launcher-error-surface); color: var(--launcher-error); }
+  #launcher-ui-preview .tray-address > :last-child { min-width: 0; overflow-wrap: anywhere; }
+  #launcher-ui-preview .tray-address:not([data-invalid="true"]) > :last-child { font-family: Consolas, monospace; border-inline-start: 1px solid var(--launcher-control); padding-inline-start: 8px; color: var(--launcher-ink); }
+  #launcher-ui-preview .tray-item {
+    display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 8px;
+    background: transparent; border: 1px solid transparent; border-radius: 6px; text-align: start; font-size: 13px;
+  }
+  #launcher-ui-preview .tray-item:hover:not(:disabled) { background: var(--launcher-soft); }
+  #launcher-ui-preview .tray-item.primary { min-height: 36px; }
+  #launcher-ui-preview .tray-item.primary:hover:not(:disabled) { background: var(--launcher-accent-hover); }
+  #launcher-ui-preview .tray-item:disabled { color: var(--launcher-muted); }
+  #launcher-ui-preview .tray-item.primary[data-busy="true"] { background: var(--launcher-selection); color: var(--launcher-success); }
+  #launcher-ui-preview .tray-exit { margin-top: 2px; border-top-color: var(--launcher-border); border-start-start-radius: 0; border-start-end-radius: 0; }
+  #launcher-ui-preview .scenario { display: grid; gap: 3px; margin-top: 2px; color: var(--launcher-muted); font-size: 12px; }
+  #launcher-ui-preview .scenario select {
+    width: 100%; min-height: 33px; padding: 5px 7px; border: 1px solid var(--launcher-border); border-radius: 5px;
+    color: var(--launcher-ink); background: var(--launcher-surface);
+  }
+  #launcher-ui-preview dialog {
+    width: min(380px, calc(100% - 28px)); max-height: calc(100% - 18px);
+    padding: 16px; border: 1px solid var(--launcher-border); border-radius: 9px;
+    background: var(--launcher-surface); color: var(--launcher-ink); box-shadow: 0 8px 26px var(--launcher-shadow);
+  }
+  #launcher-ui-preview dialog::backdrop { background: light-dark(#1c2a224c, #080e0a70); }
+  #launcher-ui-preview dialog p { margin: 8px 0 14px; }
+  #launcher-ui-preview .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  #launcher-ui-preview .dialog-actions .button { min-width: 82px; }
+
+  @container (max-width: 680px) {
+    #launcher-ui-preview .desktop { grid-template-columns: minmax(0,1fr); gap: 12px; }
+    #launcher-ui-preview .tray-rail { justify-self: end; }
+  }
+  @container (max-width: 570px) {
+    #launcher-ui-preview .title-bar { padding-inline: 12px 7px; }
+    #launcher-ui-preview .window-name { grid-column: 1 / 3; }
+    #launcher-ui-preview .themes { grid-column: 1 / -1; grid-row: 2; }
+    #launcher-ui-preview .caption-buttons { grid-column: 3; grid-row: 1; }
+  }
+  @container (max-width: 520px) {
+    #launcher-ui-preview .settings, #launcher-ui-preview .window-footer { padding-inline: 13px; }
+    #launcher-ui-preview .action-row { grid-template-columns: minmax(0,1fr); gap: 7px; }
+    #launcher-ui-preview .check-results dd { max-inline-size: 150px; }
+  }
+  @container (max-width: 395px) {
+    #launcher-ui-preview .proxy-fields { grid-template-columns: minmax(0,1fr); }
+    #launcher-ui-preview .window-name h1 { font-size: 14px; }
+  }
+  @media (pointer: coarse) {
+    #launcher-ui-preview :is(.button,.caption,.tray-item,.scenario select) { min-height: 44px; }
+    #launcher-ui-preview .caption { width: 44px; }
+    #launcher-ui-preview .proxy-fields input { font-size: 16px; min-height: 44px; }
+    #launcher-ui-preview .themes span { min-height: 44px; padding-block: 12px; }
+    #launcher-ui-preview .setting { min-height: 46px; }
+    #launcher-ui-preview :is(.help-trigger,.resize-grip) { min-width: 44px; min-height: 44px; }
+    #launcher-ui-preview .help-trigger { border-color: transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #launcher-ui-preview *, #launcher-ui-preview *::before { transition: none !important; }
+  }
+</style>
+<script>
+  (() => {
+    const root = document.getElementById("launcher-ui-preview");
+    const ui = Object.fromEntries([...root.querySelectorAll("[data-ui]")].map(el => [el.dataset.ui, el]));
+    const preferences = Object.fromEntries([...root.querySelectorAll("[data-preference]")].map(el => [el.dataset.preference, el]));
+    const themes = [...root.querySelectorAll(".themes input")];
+    ui.trayMark.src = root.querySelector(".app-mark").src;
+    const launchLabel = "使用代理启动 Codex";
+    const cleanupLabel = "清理旧进程…";
+    const cleanupDescription = "结束当前会话中的 Codex 进程，之后可手动打开。";
+    const idleTest = ["待检测", "neutral"];
+    const formatTime = new Intl.DateTimeFormat("sv-SE", {
+      dateStyle: "short", timeStyle: "medium", hourCycle: "h23"
+    });
+    const state = {
+      mode: "normal", width: 0, trayOpen: true, scene: "normal", oldStartup: false, codexRunning: true,
+      operation: "", checkRunning: false, launchAt: null, launchStatus: ["尚未启动", "neutral"],
+      cleanupStatus: [cleanupDescription, "neutral"], tcp: idleTest, http: idleTest,
+      saveStatus: ["更改将自动保存", "neutral"]
+    };
+    let checkTimer;
+    let saveTimer;
+    let drag;
+    let helpPinned = false;
+
+    function getProxy() {
+      const host = ui.host.value.trim();
+      const port = ui.port.value.trim();
+      let hostname = "";
+      if (host && !/[\s/?#@%\\]/u.test(host)) {
+        try {
+          const candidate = host.includes(":") && !/^\[.+\]$/u.test(host) ? "[" + host + "]" : host;
+          const parsed = new URL("http://" + candidate);
+          if (!parsed.port) hostname = parsed.hostname;
+        } catch {}
+      }
+      const hostInvalid = !hostname;
+      const portInvalid = !/^\d+$/u.test(port) || Number(port) < 1 || Number(port) > 65535;
+      return {
+        hostInvalid, portInvalid,
+        endpoint: hostInvalid || portInvalid ? null : hostname + ":" + Number(port)
+      };
+    }
+
+    function setText(element, text) {
+      if (element.textContent !== text) element.textContent = text;
+    }
+
+    function setStatus(element, [text, tone]) {
+      setText(element, text);
+      element.dataset.tone = tone;
+    }
+
+    function render() {
+      const proxy = getProxy();
+      const launching = state.operation === "launch";
+      const cleaning = state.operation === "cleanup";
+      const modalOpen = ui.confirmation.open;
+      const blocked = Boolean(state.operation) || modalOpen;
+      const activeWindow = state.mode === "normal" || state.mode === "maximized";
+      const exited = state.mode === "exited";
+      const closeLabel = preferences.closeToTray.checked ? "关闭时最小化到托盘" : "退出启动器";
+      const maximizeLabel = state.mode === "maximized" ? "还原窗口" : "最大化窗口";
+
+      ui.desktop.dataset.window = state.mode;
+      ui.window.hidden = !activeWindow;
+      ui.resize.hidden = state.mode === "maximized";
+      ui.close.setAttribute("aria-label", closeLabel);
+      ui.close.dataset.tooltip = closeLabel;
+      ui.maximize.setAttribute("aria-label", maximizeLabel);
+      ui.maximize.dataset.tooltip = maximizeLabel;
+
+      ui.host.setAttribute("aria-invalid", String(proxy.hostInvalid));
+      ui.port.setAttribute("aria-invalid", String(proxy.portInvalid));
+      const validation = proxy.hostInvalid ? "请输入有效的代理主机名或 IP 地址。"
+        : proxy.portInvalid ? "代理端口必须是 1–65535 之间的整数。" : "";
+      setText(ui.validation, validation);
+      ui.validation.hidden = !validation;
+      setStatus(ui.save, validation ? ["待修正", "warning"] : state.saveStatus);
+      setStatus(ui.tcp, state.tcp);
+      setStatus(ui.http, state.http);
+      ui.test.disabled = !proxy.endpoint || state.checkRunning;
+      setText(ui.test, state.checkRunning ? "检测中…" : "检测代理");
+
+      ui.launch.disabled = !proxy.endpoint || blocked;
+      ui.cleanup.disabled = Boolean(state.operation);
+      setText(ui.launch, launching ? "正在启动 Codex…" : launchLabel);
+      setText(ui.cleanup, cleaning ? "正在清理…" : cleanupLabel);
+      setStatus(ui.launchStatus, state.launchStatus);
+      setStatus(ui.cleanupStatus, state.cleanupStatus);
+      ui.launchDetails.hidden = state.launchStatus[1] !== "error";
+      ui.launchTime.hidden = !state.launchAt;
+      if (state.launchAt) {
+        ui.launchTime.dateTime = state.launchAt.toISOString();
+        setText(ui.launchTime, formatTime.format(state.launchAt));
+      }
+      ui.registrationNote.hidden = !state.oldStartup || !preferences.login.checked;
+
+      ui.trayToggle.hidden = exited;
+      ui.trayToggle.setAttribute("aria-expanded", String(state.trayOpen && !exited));
+      ui.trayMenu.hidden = !state.trayOpen || exited;
+      ui.trayAddress.dataset.invalid = String(!proxy.endpoint);
+      ui.trayProtocol.hidden = !proxy.endpoint;
+      setText(ui.trayEndpoint, proxy.endpoint || "请在设置中修正代理地址");
+      ui.trayLaunch.disabled = !proxy.endpoint || blocked;
+      ui.trayLaunch.dataset.busy = String(launching);
+      setText(ui.trayLaunchText, launching ? "正在启动 Codex…" : launchLabel);
+      ui.trayExit.disabled = blocked;
+      ui.scene.disabled = blocked;
+      ui.reopen.hidden = !exited;
+    }
+
+    function resetConnection() {
+      clearTimeout(checkTimer);
+      state.checkRunning = false;
+      state.tcp = state.http = idleTest;
+    }
+
+    function markSaved() {
+      clearTimeout(saveTimer);
+      state.saveStatus = ["正在保存…", "working"];
+      render();
+      saveTimer = setTimeout(() => {
+        state.saveStatus = ["已保存", "success"];
+        render();
+      }, 300);
+    }
+
+    function editProxy() {
+      resetConnection();
+      markSaved();
+    }
+
+    function testProxy() {
+      if (ui.test.disabled) return;
+      const rejects = state.scene === "proxyError";
+      state.checkRunning = true;
+      state.tcp = ["检测中…", "working"];
+      state.http = ["等待端口检测", "neutral"];
+      render();
+      checkTimer = setTimeout(() => {
+        state.tcp = ["可达", "success"];
+        state.http = ["检测中…", "working"];
+        render();
+        checkTimer = setTimeout(() => {
+          state.checkRunning = false;
+          state.http = rejects ? ["失败（代理要求身份验证）", "error"] : ["通过（测试地址已响应）", "success"];
+          render();
+        }, 480);
+      }, 350);
+    }
+
+    function openSettings() {
+      state.mode = state.mode === "maximized" ? "maximized" : "normal";
+      render();
+      ui.host.focus();
+    }
+
+    function launch() {
+      if (ui.launch.disabled) return;
+      const running = state.codexRunning && !preferences.restart.checked;
+      const fail = state.scene === "launchError";
+      state.launchAt = new Date();
+      state.operation = "launch";
+      state.launchStatus = ["正在启动…", "working"];
+      render();
+      setTimeout(() => {
+        state.operation = "";
+        if (running || fail) {
+          state.launchStatus = running ? ["Codex 已在运行，请退出旧实例后重试", "warning"]
+            : ["启动失败", "error"];
+          if (state.mode === "hidden") openSettings();
+        } else {
+          state.codexRunning = true;
+          state.launchStatus = ["Windows 已接受启动请求", "success"];
+          state.cleanupStatus = [cleanupDescription, "neutral"];
+        }
+        render();
+      }, 770);
+    }
+
+    function cleanup() {
+      if (state.operation) return;
+      state.operation = "cleanup";
+      ui.confirmation.close();
+      state.cleanupStatus = ["正在等待 Codex 进程退出…", "working"];
+      render();
+      setTimeout(() => {
+        state.cleanupStatus = state.codexRunning ? ["清理完成，Codex 已退出。", "success"]
+          : ["当前没有需要清理的 Codex 进程。", "neutral"];
+        state.codexRunning = false;
+        state.operation = "";
+        render();
+      }, 700);
+    }
+
+    function hideWindow() {
+      state.mode = "hidden";
+      state.trayOpen = true;
+      render();
+      ui.traySettings.focus();
+    }
+
+    function exitLauncher() {
+      if (state.operation) return;
+      resetConnection();
+      state.mode = "exited";
+      state.launchAt = null;
+      state.launchStatus = ["尚未启动", "neutral"];
+      state.cleanupStatus = [cleanupDescription, "neutral"];
+      render();
+      ui.reopen.focus();
+    }
+
+    function showHelp(visible) {
+      if (!visible) helpPinned = false;
+      ui.helpPopup.hidden = !visible;
+      ui.help.setAttribute("aria-expanded", String(visible));
+    }
+
+    function restore(snapshot) {
+      const saved = snapshot?.privateContent;
+      if (!saved || saved.version !== 1) return;
+      const currentTheme = themes.find(theme => theme.value === saved.theme);
+      if (currentTheme) {
+        currentTheme.checked = true;
+        root.dataset.theme = currentTheme.value;
+      }
+      for (const [name, control] of Object.entries(preferences)) {
+        if (typeof saved.preferences?.[name] === "boolean") control.checked = saved.preferences[name];
+      }
+    }
+
+    function save() {
+      const settings = Object.fromEntries(Object.entries(preferences).map(([name, control]) => [name, control.checked]));
+      window.openai?.setWidgetState?.({
+        privateContent: { version: 1, theme: themes.find(theme => theme.checked).value, preferences: settings }
+      })?.catch(() => {});
+    }
+
+    function resizeTo(width) {
+      const desktopWidth = ui.desktop.clientWidth;
+      state.width = Math.round(Math.max(Math.min(320, desktopWidth), width));
+      ui.window.style.setProperty("--launcher-window-width", state.width + "px");
+    }
+
+    for (const input of [ui.host, ui.port]) input.addEventListener("input", editProxy);
+    for (const theme of themes) theme.addEventListener("change", () => {
+      root.dataset.theme = theme.value;
+      markSaved();
+      save();
+    });
+    for (const control of Object.values(preferences)) control.addEventListener("change", () => {
+      if (control === preferences.login) state.oldStartup = false;
+      markSaved();
+      save();
+    });
+    ui.test.addEventListener("click", testProxy);
+    ui.launch.addEventListener("click", launch);
+    ui.trayLaunch.addEventListener("click", launch);
+    ui.cleanup.addEventListener("click", () => {
+      ui.confirmation.showModal();
+      render();
+    });
+    ui.confirmation.addEventListener("close", render);
+    ui.confirmCleanup.addEventListener("click", cleanup);
+    ui.cancelCleanup.addEventListener("click", () => { ui.confirmation.close(); render(); });
+    ui.launchDetails.addEventListener("click", () => ui.failure.showModal());
+    ui.closeFailure.addEventListener("click", () => ui.failure.close());
+    ui.minimize.addEventListener("click", hideWindow);
+    ui.maximize.addEventListener("click", () => {
+      state.mode = state.mode === "normal" ? "maximized" : "normal";
+      render();
+    });
+    ui.close.addEventListener("click", () => preferences.closeToTray.checked ? hideWindow() : exitLauncher());
+    ui.traySettings.addEventListener("click", openSettings);
+    ui.trayExit.addEventListener("click", exitLauncher);
+    ui.reopen.addEventListener("click", openSettings);
+    ui.trayToggle.addEventListener("click", () => {
+      state.trayOpen = !state.trayOpen;
+      render();
+    });
+    ui.scene.addEventListener("change", () => {
+      state.scene = ui.scene.value;
+      state.codexRunning = state.scene === "normal" || state.scene === "oldStartup";
+      state.oldStartup = state.scene === "oldStartup";
+      if (state.oldStartup) preferences.login.checked = true;
+      state.launchAt = null;
+      state.launchStatus = ["尚未启动", "neutral"];
+      state.cleanupStatus = [cleanupDescription, "neutral"];
+      resetConnection();
+      openSettings();
+    });
+    ui.help.addEventListener("click", () => { helpPinned = !helpPinned; showHelp(helpPinned); });
+    ui.helpAnchor.addEventListener("pointerenter", event => { if (event.pointerType === "mouse") showHelp(true); });
+    ui.helpAnchor.addEventListener("pointerleave", () => { if (!helpPinned) showHelp(false); });
+    ui.help.addEventListener("blur", () => showHelp(false));
+    root.addEventListener("pointerdown", event => {
+      if (!ui.helpAnchor.contains(event.target) && !ui.helpPopup.contains(event.target)) showHelp(false);
+    });
+    root.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      showHelp(false);
+      if (ui.trayMenu.contains(event.target)) {
+        state.trayOpen = false;
+        render();
+        ui.trayToggle.focus();
+      }
+    });
+    ui.resize.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      drag = { id: event.pointerId, x: event.clientX, width: ui.window.getBoundingClientRect().width };
+      ui.resize.setPointerCapture(event.pointerId);
+    });
+    ui.resize.addEventListener("pointermove", event => {
+      if (drag?.id === event.pointerId) resizeTo(drag.width + event.clientX - drag.x);
+    });
+    ui.resize.addEventListener("lostpointercapture", () => { drag = null; });
+    ui.resize.addEventListener("keydown", event => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const width = ui.window.getBoundingClientRect().width;
+      if (event.key === "ArrowRight" && state.width > width) return;
+      resizeTo(width + (event.key === "ArrowLeft" ? -24 : 24));
+    });
+    ui.resize.addEventListener("dblclick", () => {
+      state.width = 0;
+      ui.window.style.removeProperty("--launcher-window-width");
+    });
+
+    restore(window.openai?.widgetState);
+    render();
+    window.addEventListener("openai:set_globals", event => {
+      restore(event.detail?.globals?.widgetState);
+      render();
+    });
+  })();
+</script>
+<!-- END CODEX PREVIEW -->
+</body>
+</html>
