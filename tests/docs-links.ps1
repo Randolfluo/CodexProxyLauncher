@@ -21,11 +21,30 @@ foreach ($document in $documents) {
     $html = (ConvertFrom-Markdown -LiteralPath $document.FullName).Html
     if ($document.FullName -eq $projectReadme) {
         $intro = ($html -split '<h2\b', 2)[0]
+        foreach ($term in 'Codex Desktop', 'HTTP 代理', 'HTTP proxy', 'Windows 11 x64', 'TUN') {
+            if ($intro -notlike "*$term*") {
+                throw "The project README introduction must include '$term'."
+            }
+        }
         if (-not $intro.Contains($releaseLink)) {
             throw 'The project README introduction must link to GitHub Releases.'
         }
         if (-not $html.Contains('<a href="docs/ui-preview.html">')) {
             throw 'The project README must link to the UI preview.'
+        }
+
+        $quickStart = [regex]::Match($html, '(?s)<h2\b[^>]*>快速开始</h2>.*?(?<steps><ol\b[^>]*>.*?</ol>)')
+        $screenshot = [regex]::Match($html, '<img\b[^>]*\bsrc="docs/images/settings\.png"')
+        if (-not $quickStart.Success -or -not $screenshot.Success -or $quickStart.Index + $quickStart.Length -gt $screenshot.Index) {
+            throw 'The README must show the ordered quick start before the settings screenshot.'
+        }
+        $steps = $quickStart.Groups['steps'].Value
+        if (-not $steps.Contains('检测代理') -or -not $steps.Contains('使用代理启动 Codex')) {
+            throw 'The quick start must explain the proxy test and the launch action.'
+        }
+        $items = [regex]::Matches($steps, '(?s)<li\b[^>]*>.*?</li>')
+        if ($items.Count -lt 4 -or -not $items[3].Value.Contains('启动前清理旧进程')) {
+            throw 'The fourth quick-start step must explain the startup cleanup option.'
         }
     }
 
@@ -41,7 +60,7 @@ foreach ($document in $documents) {
         $linkCount++
     }
 }
-Write-Output "PASS: README download link and $linkCount local Markdown links and images."
+Write-Output "PASS: README download link, quick start and $linkCount local Markdown links and images."
 
 $page = Get-Content -Raw -Encoding utf8 -LiteralPath $previewPath
 if (-not $page.StartsWith('<!doctype html>') -or -not $page.Contains('<meta charset="utf-8">')) {
